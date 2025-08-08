@@ -93,6 +93,8 @@ add_library(
   planners/cost_derivatives.h
   planners/model_derivatives.cc
   planners/model_derivatives.h
+  planners/model_derivatives_wasp.cc
+  planners/model_derivatives_wasp.h
   planners/cross_entropy/planner.cc
   planners/cross_entropy/planner.h
   planners/robust/robust_planner.cc

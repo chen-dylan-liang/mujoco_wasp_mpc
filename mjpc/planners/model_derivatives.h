@@ -42,7 +42,7 @@ class ModelDerivatives {
   void Reset(int dim_state_derivative, int dim_action, int dim_sensor, int T);
 
   // compute derivatives at all time steps
-  void Compute(const mjModel* m, const std::vector<UniqueMjData>& data,
+  virtual void Compute(const mjModel* m, const std::vector<UniqueMjData>& data,
                const double* x, const double* u, const double* h, int dim_state,
                int dim_state_derivative, int dim_action, int dim_sensor, int T,
                double tol, int mode, ThreadPool& pool, int skip = 0);
@@ -56,6 +56,8 @@ class ModelDerivatives {
                           //   (T * dim_sensor * dim_state_derivative)
   std::vector<double> D;  // output Jacobians wrt action
                           //   (T * dim_sensor * dim_action)
+
+ //
 
   // indices
   std::vector<int> evaluate_;

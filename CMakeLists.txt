@@ -56,8 +56,8 @@ set(MUJOCO_BUILD_TESTS OFF)
 set(MUJOCO_TEST_PYTHON_UTIL OFF)
 
 set(MUJOCO_MPC_MUJOCO_GIT_TAG
-    088079eff0450e32b98ee743141780ed68307506
-    CACHE STRING "Git revision for MuJoCo."
+    9d623ca82c2a41064f997b49e3827ef691e04093 #088079eff0450e32b98ee743141780ed68307506
+    CACHE STRING "Git revision for (Wasp-Differentiated-)MuJoCo."
 )
 
 set(MUJOCO_MPC_MENAGERIE_GIT_TAG
@@ -78,7 +78,8 @@ findorfetch(
   LIBRARY_NAME
   mujoco
   GIT_REPO
-  https://github.com/google-deepmind/mujoco.git
+  https://github.com/chen-dylan-liang/wasp-differentiated-mujoco.git
+  # https://github.com/google-deepmind/mujoco.git
   GIT_TAG
   ${MUJOCO_MPC_MUJOCO_GIT_TAG}
   TARGETS
