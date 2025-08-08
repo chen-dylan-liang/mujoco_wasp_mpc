@@ -14,10 +14,11 @@
 # Exclude editor config
 .vscode/
 .vs/
+.idea/
 # Exclude temporary folders
 *.egg-info/
 .eggs/
-build/
+*build*/
 build_cmake/
 # Exclude macOS folder attributes
 .DS_Store
