@@ -1,4 +1,4 @@
-<h1>
+q<h1>
   <a href="#"><img alt="MuJoCo MPC" src="docs/assets/banner.png" width="100%"></a>
 </h1>
 

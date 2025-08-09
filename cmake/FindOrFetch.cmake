@@ -112,6 +112,16 @@ macro(FindOrFetch)
       message(CHECK_START
               "mujoco::FindOrFetch: Using FetchContent to retrieve `${_ARGS_LIBRARY_NAME}`"
       )
+
+      message(STATUS "FindOrFetch(${_ARGS_LIBRARY_NAME}):")
+      message(STATUS "  USE_SYSTEM_PACKAGE = '${_ARGS_USE_SYSTEM_PACKAGE}'")
+      message(STATUS "  GIT_REPO          = '${_ARGS_GIT_REPO}'")
+      message(STATUS "  GIT_TAG           = '${_ARGS_GIT_TAG}'")
+      # Show any FetchContent overrides in effect (name must be UPPERCASE)
+      string(TOUPPER "${_ARGS_LIBRARY_NAME}" _LIB_UP)
+      message(STATUS "  FETCHCONTENT_SOURCE_DIR_${_LIB_UP} = '${FETCHCONTENT_SOURCE_DIR_${_LIB_UP}}'")
+      message(STATUS "  FETCHCONTENT_UPDATES_DISCONNECTED  = '${FETCHCONTENT_UPDATES_DISCONNECTED}'")
+
       FetchContent_Declare(
         ${_ARGS_LIBRARY_NAME}
         GIT_REPOSITORY ${_ARGS_GIT_REPO}
@@ -131,6 +141,21 @@ macro(FindOrFetch)
         endif()
       else()
         FetchContent_MakeAvailable(${_ARGS_LIBRARY_NAME})
+        # Print the actual clone location and commit
+        message(STATUS "${_ARGS_LIBRARY_NAME}_SOURCE_DIR = '${${_ARGS_LIBRARY_NAME}_SOURCE_DIR}'")
+        message(STATUS "${_ARGS_LIBRARY_NAME}_BINARY_DIR = '${${_ARGS_LIBRARY_NAME}_BINARY_DIR}'")
+        find_program(GIT_EXEC git)
+        if (GIT_EXEC AND EXISTS "${${_ARGS_LIBRARY_NAME}_SOURCE_DIR}/.git")
+          execute_process(
+                  COMMAND ${GIT_EXEC} -C "${${_ARGS_LIBRARY_NAME}_SOURCE_DIR}" remote -v
+                  OUTPUT_VARIABLE _remotes OUTPUT_STRIP_TRAILING_WHITESPACE)
+          execute_process(
+                  COMMAND ${GIT_EXEC} -C "${${_ARGS_LIBRARY_NAME}_SOURCE_DIR}" rev-parse HEAD
+                  OUTPUT_VARIABLE _head OUTPUT_STRIP_TRAILING_WHITESPACE)
+          message(STATUS "  git remotes:\n${_remotes}")
+          message(STATUS "  HEAD: ${_head}")
+        endif()
+
       endif()
       message(CHECK_PASS "Done")
     endif()
