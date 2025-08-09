@@ -35,11 +35,11 @@ class ModelDerivatives {
   ~ModelDerivatives() = default;
 
   // allocate memory
-  void Allocate(int dim_state_derivative, int dim_action, int dim_sensor,
+  virtual void Allocate(int dim_state_derivative, int dim_action, int dim_sensor,
                 int T);
 
   // reset memory to zeros
-  void Reset(int dim_state_derivative, int dim_action, int dim_sensor, int T);
+  virtual void Reset(int dim_state_derivative, int dim_action, int dim_sensor, int T);
 
   // compute derivatives at all time steps
   virtual void Compute(const mjModel* m, const std::vector<UniqueMjData>& data,
@@ -57,11 +57,18 @@ class ModelDerivatives {
   std::vector<double> D;  // output Jacobians wrt action
                           //   (T * dim_sensor * dim_action)
 
- //
-
   // indices
   std::vector<int> evaluate_;
   std::vector<int> interpolate_;
+protected:
+    virtual void OneStepDerivatives(const mjModel* m,
+                                          const std::vector<UniqueMjData>& data,
+                                          const double* x, const double* u, const double* h,
+                                          int dim_state, int dim_state_derivative, int dim_action, int dim_sensor,
+                                          int t, int T,
+                                          double tol,
+                                          int mode,
+                                          ThreadPool& pool);
 };
 
 }  // namespace mjpc

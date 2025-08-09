@@ -42,6 +42,43 @@ void ModelDerivatives::Reset(int dim_state_derivative, int dim_action,
 }
 
 // compute derivatives at all time steps
+void ModelDerivatives::OneStepDerivatives(const mjModel* m,
+                                          const std::vector<UniqueMjData>& data,
+                                          const double* x, const double* u, const double* h,
+                                          int dim_state, int dim_state_derivative, int dim_action, int dim_sensor,
+                                          int t, int T,
+                                          double tol,
+                                          int mode,
+                                          ThreadPool& pool) {
+  pool.Schedule([&m, &data, &A = A, &B = B, &C = C, &D = D, &x, &u, &h,
+               dim_state, dim_state_derivative, dim_action, dim_sensor, tol,
+               mode, t, T]() {
+  mjData* d = data[ThreadPool::WorkerId()].get();
+  // set state
+  SetState(m, d, x + t * dim_state);
+  d->time = h[t];
+
+  // set action
+  mju_copy(d->ctrl, u + t * dim_action, dim_action);
+
+  // Jacobians
+  if (t == T - 1) {
+    // Jacobians
+    mjd_transitionFD(m, d, tol, mode, nullptr, nullptr,
+                     DataAt(C, t * (dim_sensor * dim_state_derivative)),
+                     nullptr);
+  } else {
+    // derivatives
+    mjd_transitionFD(
+        m, d, tol, mode,
+        DataAt(A, t * (dim_state_derivative * dim_state_derivative)),
+        DataAt(B, t * (dim_state_derivative * dim_action)),
+        DataAt(C, t * (dim_sensor * dim_state_derivative)),
+        DataAt(D, t * (dim_sensor * dim_action)));
+  }
+});
+}
+
 void ModelDerivatives::Compute(const mjModel* m,
                                const std::vector<UniqueMjData>& data,
                                const double* x, const double* u,
@@ -73,35 +110,8 @@ void ModelDerivatives::Compute(const mjModel* m,
 
   // evaluate derivatives
   int count_before = pool.GetCount();
-  for (int t : evaluate_) {
-    pool.Schedule([&m, &data, &A = A, &B = B, &C = C, &D = D, &x, &u, &h,
-                   dim_state, dim_state_derivative, dim_action, dim_sensor, tol,
-                   mode, t, T]() {
-      mjData* d = data[ThreadPool::WorkerId()].get();
-      // set state
-      SetState(m, d, x + t * dim_state);
-      d->time = h[t];
-
-      // set action
-      mju_copy(d->ctrl, u + t * dim_action, dim_action);
-
-      // Jacobians
-      if (t == T - 1) {
-        // Jacobians
-        mjd_transitionFD(m, d, tol, mode, nullptr, nullptr,
-                         DataAt(C, t * (dim_sensor * dim_state_derivative)),
-                         nullptr);
-      } else {
-        // derivatives
-        mjd_transitionFD(
-            m, d, tol, mode,
-            DataAt(A, t * (dim_state_derivative * dim_state_derivative)),
-            DataAt(B, t * (dim_state_derivative * dim_action)),
-            DataAt(C, t * (dim_sensor * dim_state_derivative)),
-            DataAt(D, t * (dim_sensor * dim_action)));
-      }
-    });
-  }
+  for (int t : evaluate_) OneStepDerivatives(m, data, x, u, h, dim_state, dim_state_derivative, dim_action, dim_sensor, t,
+    T, tol, mode, pool);
   pool.WaitCount(count_before + evaluate_.size());
   pool.ResetCount();
 
