@@ -15,53 +15,46 @@
 #include "mjpc/utilities.h"
 namespace mjpc {
 
-    struct mjpcWASPCache {
-        std::vector<double> Delta_X;
-        std::vector<double> C1;
-        std::vector<double> C2;
-        std::vector<double> F_hat;
-        std::vector<double> fi;
-        std::vector<int> i;
-        int n,m;
-        void Allocate(int dim_inputs, int dim_outputs, int T) {
-            Delta_X.resize(T*dim_inputs*dim_inputs);
-            C1.resize((T*dim_inputs)*dim_outputs*dim_inputs);
-            C2.resize((T*dim_inputs)*dim_inputs);
-            F_hat.resize(T*dim_outputs*dim_inputs);
-            fi.resize(T*dim_outputs);
-            i.resize(T);
-            n = dim_inputs;
-            m  = dim_outputs;
-        }
-        void Reset(int dim_inputs, int dim_outputs, int T) {
-            std::fill(Delta_X.begin(), Delta_X.begin() + T*dim_inputs*dim_inputs, 0);
-            std::fill(C1.begin(), C1.begin() + (T*dim_inputs)*dim_outputs*dim_inputs, 0);
-            std::fill(C2.begin(), C2.begin() + (T*dim_inputs)*dim_inputs, 0);
-            std::fill(F_hat.begin(), F_hat.begin() + T*dim_outputs*dim_inputs, 0);
-            std::fill(fi.begin(), fi.begin() + T*dim_outputs, 0);
-            std::fill(i.begin(), i.begin() + T, 0);
-            n = dim_inputs;
-            m  = dim_outputs;
-        }
-        mjWASPCache RawData(int t) {
-            mjWASPCache ret;
-            ret.Delta_X = DataAt(Delta_X, t* n* n);
-            ret.C1 = DataAt(C1, t * n * m * n);
-            ret.C2 = DataAt(C2, t * n* n);
-            ret.F_hat = DataAt(F_hat, t*m*n);
-            ret.fi = DataAt(fi, t*m);
-            ret.i = DataAt(i, t);
-            return ret;
-        }
-    };
-
     class ModelDerivativesWASP: public ModelDerivatives {
     public:
         // constructor
         ModelDerivativesWASP() = default;
 
         // destructor
-        ~ModelDerivativesWASP() = default;
+        ~ModelDerivativesWASP() {
+            for (int i=0; i<DyDq.size();i++) {
+                mj_deleteWASPCache(DyDq[i]);
+                DyDq[i]=nullptr;
+            }
+            for (int i=0; i<DyDv.size();i++) {
+                mj_deleteWASPCache(DyDv[i]);
+                DyDv[i]=nullptr;
+            }
+            for (int i=0; i<DyDa.size();i++) {
+                mj_deleteWASPCache(DyDa[i]);
+                DyDa[i]=nullptr;
+            }
+            for (int i=0; i<DyDu.size();i++) {
+                mj_deleteWASPCache(DyDu[i]);
+                DyDu[i]=nullptr;
+            }
+            for (int i=0; i<DsDq.size();i++) {
+                mj_deleteWASPCache(DsDq[i]);
+                DsDq[i]=nullptr;
+            }
+            for (int i=0; i<DsDv.size();i++) {
+                mj_deleteWASPCache(DsDv[i]);
+                DsDv[i]=nullptr;
+            }
+            for (int i=0; i<DsDa.size();i++) {
+                mj_deleteWASPCache(DsDa[i]);
+                DsDa[i]=nullptr;
+            }
+            for (int i=0; i<DsDu.size();i++) {
+                mj_deleteWASPCache(DsDu[i]);
+                DsDu[i]=nullptr;
+            }
+        }
 
         // allocate memory
         void Allocate(int dim_state_derivative, int dim_action, int dim_sensor,
@@ -84,12 +77,15 @@ namespace mjpc {
             double tol,
             int mode,
             ThreadPool &pool) override;
-        mjpcWASPCache DyDq, DyDv, DyDa;
-        mjpcWASPCache DyDu;
-        mjpcWASPCache DsDq, DsDv, DsDa;
-        mjpcWASPCache DsDu;
+        std::vector<mjWASPCache*> DyDq, DyDv, DyDa;
+        std::vector<mjWASPCache*> DyDu;
+        std::vector<mjWASPCache*> DsDq, DsDv, DsDa;
+        std::vector<mjWASPCache*> DsDu;
         bool needs_allocate_cache=true;
         bool needs_reset_cache=false;
+        bool use_wasp_identity_basis=false;
+        double dtheta=1e10, dell=1e-10;
+        int max_wasp_iters=5;
     };
 }
 
