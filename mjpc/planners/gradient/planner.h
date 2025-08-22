@@ -26,6 +26,7 @@
 #include "mjpc/planners/gradient/settings.h"
 #include "mjpc/planners/gradient/spline_mapping.h"
 #include "mjpc/planners/model_derivatives.h"
+#include "mjpc/planners/model_derivatives_wasp.h"
 #include "mjpc/planners/planner.h"
 #include "mjpc/states/state.h"
 #include "mjpc/task.h"
@@ -124,7 +125,7 @@ class GradientPlanner : public Planner {
   int num_trajectory;
 
   // model derivatives
-  ModelDerivatives model_derivative;
+  ModelDerivatives* model_derivative;
 
   // cost derivatives
   CostDerivatives cost_derivative;

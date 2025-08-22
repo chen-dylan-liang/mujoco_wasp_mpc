@@ -116,7 +116,7 @@ class iLQGPlanner : public Planner {
   Trajectory trajectory[kMaxTrajectory];
 
   // model derivatives
-  ModelDerivatives model_derivative;
+  ModelDerivatives* model_derivative;
 
   // cost derivatives
   CostDerivatives cost_derivative;

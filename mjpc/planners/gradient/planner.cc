@@ -26,6 +26,7 @@
 #include "mjpc/planners/gradient/settings.h"
 #include "mjpc/planners/gradient/spline_mapping.h"
 #include "mjpc/planners/model_derivatives.h"
+#include "mjpc/planners/model_derivatives_wasp.h"
 #include "mjpc/planners/planner.h"
 #include "mjpc/states/state.h"
 #include "mjpc/task.h"
@@ -77,7 +78,7 @@ void GradientPlanner::Allocate() {
   }
 
   // model derivatives
-  model_derivative.Allocate(dim_state_derivative, dim_action, dim_sensor,
+  model_derivative->Allocate(dim_state_derivative, dim_action, dim_sensor,
                             kMaxTrajectoryHorizon);
 
   // costs derivatives
@@ -114,7 +115,7 @@ void GradientPlanner::Reset(int horizon,
   time = 0.0;
 
   // model derivatives
-  model_derivative.Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
+  model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
 
   // cost derivatives
   cost_derivative.Reset(dim_state_derivative, dim_action, task->num_residual,
@@ -201,7 +202,7 @@ void GradientPlanner::OptimizePolicy(int horizon, ThreadPool& pool) {
     auto model_derivative_start = std::chrono::steady_clock::now();
 
     // compute model and sensor Jacobians
-    model_derivative.Compute(
+    model_derivative->Compute(
         model, data_, trajectory[0].states.data(), trajectory[0].actions.data(),
         trajectory[0].times.data(), dim_state, dim_state_derivative, dim_action,
         dim_sensor, horizon, settings.fd_tolerance, settings.fd_mode, pool,
@@ -216,8 +217,8 @@ void GradientPlanner::OptimizePolicy(int horizon, ThreadPool& pool) {
 
     // compute cost derivatives
     cost_derivative.Compute(
-        trajectory[0].residual.data(), model_derivative.C.data(),
-        model_derivative.D.data(), dim_state_derivative, dim_action, dim_max,
+        trajectory[0].residual.data(), model_derivative->C.data(),
+        model_derivative->D.data(), dim_state_derivative, dim_action, dim_max,
         dim_sensor, task->num_residual, task->dim_norm_residual.data(),
         task->num_term, task->weight.data(), task->norm.data(),
         task->norm_parameter.data(), task->num_norm_parameter.data(),
@@ -231,7 +232,7 @@ void GradientPlanner::OptimizePolicy(int horizon, ThreadPool& pool) {
     auto gradient_start = std::chrono::steady_clock::now();
 
     // compute action derivatives
-    int gd_status = gradient.Compute(&candidate_policy[0], &model_derivative,
+    int gd_status = gradient.Compute(&candidate_policy[0], model_derivative,
                                      &cost_derivative, dim_state_derivative,
                                      dim_action, horizon);
 

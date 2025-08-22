@@ -79,7 +79,7 @@ void iLQGPlanner::Allocate() {
   }
 
   // model derivatives
-  model_derivative.Allocate(dim_state_derivative, dim_action, dim_sensor,
+  model_derivative->Allocate(dim_state_derivative, dim_action, dim_sensor,
                             kMaxTrajectoryHorizon);
 
   // costs derivatives
@@ -110,7 +110,7 @@ void iLQGPlanner::Reset(int horizon, const double* initial_repeated_action) {
   time = 0.0;
 
   // model derivatives
-  model_derivative.Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
+  model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
 
   // cost derivatives
   cost_derivative.Reset(dim_state_derivative, dim_action, task->num_residual,
@@ -392,7 +392,7 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
   auto model_derivative_start = std::chrono::steady_clock::now();
 
   // compute model and sensor Jacobians
-  model_derivative.Compute(
+  model_derivative->Compute(
       model, data_, candidate_policy[0].trajectory.states.data(),
       candidate_policy[0].trajectory.actions.data(),
       candidate_policy[0].trajectory.times.data(), dim_state,
@@ -408,8 +408,8 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
 
   // cost derivatives
   cost_derivative.Compute(
-      candidate_policy[0].trajectory.residual.data(), model_derivative.C.data(),
-      model_derivative.D.data(), dim_state_derivative, dim_action, dim_max,
+      candidate_policy[0].trajectory.residual.data(), model_derivative->C.data(),
+      model_derivative->D.data(), dim_state_derivative, dim_action, dim_max,
       dim_sensor, task->num_residual, task->dim_norm_residual.data(),
       task->num_term, task->weight.data(), task->norm.data(),
       task->norm_parameter.data(), task->num_norm_parameter.data(), task->risk,
@@ -448,9 +448,9 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
           DataAt(backward_pass.Vx, (t + 1) * dim_state_derivative),
           DataAt(backward_pass.Vxx,
                  (t + 1) * dim_state_derivative * dim_state_derivative),
-          DataAt(model_derivative.A,
+          DataAt(model_derivative->A,
                  t * dim_state_derivative * dim_state_derivative),
-          DataAt(model_derivative.B, t * dim_state_derivative * dim_action),
+          DataAt(model_derivative->B, t * dim_state_derivative * dim_action),
           DataAt(cost_derivative.cx, t * dim_state_derivative),
           DataAt(cost_derivative.cu, t * dim_action),
           DataAt(cost_derivative.cxx,
