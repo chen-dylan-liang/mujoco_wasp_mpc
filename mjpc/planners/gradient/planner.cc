@@ -198,15 +198,16 @@ void GradientPlanner::OptimizePolicy(int horizon, ThreadPool& pool) {
   int skip = derivative_skip_;
   for (int i = 0; i < settings.max_rollout; i++) {
     // ----- model derivatives ----- //
-    if(md_switch!=0){
-        if(md_switch==1 && md_engine!=FD){
+    if(md_switch!=-1){
+        if(md_switch==0 && md_engine!=FD){
             model_derivative=&fd_md;
             model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
         }
-        else if (md_switch==2 && md_engine!=WASP){
+        else if (md_switch==1 && md_engine!=WASP){
             model_derivative=&wasp_md;
             model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
         }
+        md_switch = -1;
     }
     // start timer
     auto model_derivative_start = std::chrono::steady_clock::now();
@@ -481,6 +482,7 @@ void GradientPlanner::GUI(mjUI& ui) {
        "Zero\nLinear\nCubic"},
       {mjITEM_SLIDERINT, "Spline Pts", 2, &policy.num_spline_points, "0 1"},
       {mjITEM_SLIDERINT, "Deriv. Skip", 2, &derivative_skip_, "0 16"},
+      {mjITEM_SELECT, "MD Engine", 2, &md_switch, "FD\nWASP\n"},
       {mjITEM_END}};
 
   // set number of trajectory slider limits
