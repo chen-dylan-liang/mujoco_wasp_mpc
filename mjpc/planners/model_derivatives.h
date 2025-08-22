@@ -25,6 +25,10 @@
 
 namespace mjpc {
 
+enum ModelDerivativesType{
+    FD,
+    WASP,
+};
 // data and methods for model derivatives
 class ModelDerivatives {
  public:

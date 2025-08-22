@@ -110,6 +110,16 @@ void iLQGPlanner::Reset(int horizon, const double* initial_repeated_action) {
   time = 0.0;
 
   // model derivatives
+  if(md_switch!=0){
+            if(md_switch==1 && md_engine!=FD){
+                model_derivative=&fd_md;
+                model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
+            }
+            else if (md_switch==2 && md_engine!=WASP){
+                model_derivative=&wasp_md;
+                model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
+            }
+  }
   model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
 
   // cost derivatives

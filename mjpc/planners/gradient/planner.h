@@ -126,6 +126,17 @@ class GradientPlanner : public Planner {
 
   // model derivatives
   ModelDerivatives* model_derivative;
+  // finite-differenced model derivatives
+  ModelDerivatives fd_md;
+  // wasp-approximated model derivatives
+  ModelDerivativesWASP wasp_md;
+  // model derivative engine in use
+  ModelDerivativesType md_engine=FD;
+  // model derivative switch set by GUI interface
+  // 0: has been switched
+  // 1: to be switched to FD
+  // 2: to be switched to WASP
+  mjtByte md_switch=0;
 
   // cost derivatives
   CostDerivatives cost_derivative;
