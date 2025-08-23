@@ -50,6 +50,10 @@ void iLQGPlanner::Initialize(mjModel* model, const Task& task) {
   // task
   this->task = &task;
 
+  // model derivative, default is finite differencing
+  this->model_derivative = &fd_md;
+
+
   // dimensions
   dim_state = model->nq + model->nv + model->na;  // state dimension
   dim_state_derivative =
@@ -79,7 +83,9 @@ void iLQGPlanner::Allocate() {
   }
 
   // model derivatives
-  model_derivative->Allocate(dim_state_derivative, dim_action, dim_sensor,
+  fd_md.Allocate(dim_state_derivative, dim_action, dim_sensor,
+                            kMaxTrajectoryHorizon);
+  wasp_md.Allocate(dim_state_derivative, dim_action, dim_sensor,
                             kMaxTrajectoryHorizon);
 
   // costs derivatives
@@ -110,19 +116,8 @@ void iLQGPlanner::Reset(int horizon, const double* initial_repeated_action) {
   time = 0.0;
 
   // model derivatives
-  if(md_switch!=-1){
-            if(md_switch==0 && md_engine!=FD){
-                model_derivative=&fd_md;
-                model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
-            }
-            else if (md_switch==1 && md_engine!=WASP){
-                model_derivative=&wasp_md;
-                model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
-            }
-            md_switch=-1;
-  }
-  model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
-
+  fd_md.Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
+  wasp_md.Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
   // cost derivatives
   cost_derivative.Reset(dim_state_derivative, dim_action, task->num_residual,
                         horizon);
@@ -400,6 +395,17 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
   linesearch_steps[num_trajectory_ - 1] = 0.0;
 
   // ----- model derivatives ----- //
+  if(md_switch!=-1){
+    if(md_switch==0 && md_engine!=FD){
+      model_derivative=&fd_md;
+      model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
+    }
+    else if (md_switch==1 && md_engine!=WASP){
+      model_derivative=&wasp_md;
+      model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
+    }
+    md_switch=-1;
+  }
   // start timer
   auto model_derivative_start = std::chrono::steady_clock::now();
 

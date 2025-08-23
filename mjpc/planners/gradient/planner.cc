@@ -50,6 +50,9 @@ void GradientPlanner::Initialize(mjModel* model, const Task& task) {
   // task
   this->task = &task;
 
+  // model derivative, default is finite differencing
+  this->model_derivative = &fd_md;
+
   // dimensions
   dim_state = model->nq + model->nv + model->na;  // state dimension
   dim_state_derivative =
@@ -78,8 +81,9 @@ void GradientPlanner::Allocate() {
   }
 
   // model derivatives
-  model_derivative->Allocate(dim_state_derivative, dim_action, dim_sensor,
+  fd_md.Allocate(dim_state_derivative, dim_action, dim_sensor,
                             kMaxTrajectoryHorizon);
+  wasp_md.Allocate(dim_state_derivative, dim_action, dim_sensor,kMaxTrajectoryHorizon);
 
   // costs derivatives
   cost_derivative.Allocate(dim_state_derivative, dim_action, task->num_residual,
@@ -115,7 +119,8 @@ void GradientPlanner::Reset(int horizon,
   time = 0.0;
 
   // model derivatives
-  model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
+  fd_md.Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
+  wasp_md.Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
 
   // cost derivatives
   cost_derivative.Reset(dim_state_derivative, dim_action, task->num_residual,
