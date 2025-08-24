@@ -23,10 +23,10 @@ set(CMAKE_POLICY_DEFAULT_CMP0072 NEW)
 set(MSVC_INCREMENTAL_DEFAULT ON)
 
 project(
-  mujoco_mpc
+  mujoco_wasp_mpc
   VERSION 0.1.0
-  DESCRIPTION "MuJoCo predictive control"
-  HOMEPAGE_URL "https://github.com/google-deepmind/mujoco_mpc"
+  DESCRIPTION "MuJoCo predictive control using WASP for model derivative computation"
+  HOMEPAGE_URL "https://https://github.com/chen-dylan-liang/mujoco_wasp_mpc"
 )
 
 enable_language(C)
@@ -56,7 +56,7 @@ set(MUJOCO_BUILD_TESTS OFF)
 set(MUJOCO_TEST_PYTHON_UTIL OFF)
 
 set(MUJOCO_MPC_MUJOCO_GIT_TAG
-        0fa5f7e9d25404b607dd507eeb0c434657ddf87b #088079eff0450e32b98ee743141780ed68307506
+        "1.0.0.wasp" #088079eff0450e32b98ee743141780ed68307506
     CACHE STRING "Git revision for (Wasp-Differentiated-)MuJoCo."
 )
 

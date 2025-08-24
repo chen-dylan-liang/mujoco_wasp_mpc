@@ -14,8 +14,9 @@
 #include "mjpc/threadpool.h"
 #include "mjpc/utilities.h"
 namespace mjpc {
-
-    class ModelDerivativesWASP: public ModelDerivatives {
+    class GradientPlanner;
+    class iLQGPlanner;
+    class ModelDerivativesWASP: public ModelDerivatives{
     public:
         // constructor
         ModelDerivativesWASP() = default;
@@ -84,8 +85,17 @@ namespace mjpc {
         bool needs_allocate_cache=true;
         bool needs_reset_cache=false;
         bool use_wasp_identity_basis=false;
-        double dtheta=1e10, dell=1e-10;
-        int max_wasp_iters=5;
+        // tuned interactively in planners' GUI
+        friend class GradientPlanner;
+        friend class iLQGPlanner;
+        double q_dtheta=1e-10, q_dell=1e-10;
+        double v_dtheta=1e-10, v_dell=1e-10;
+        double a_dtheta=1e-10, a_dell=1e-10;
+        double u_dtheta=1e-10, u_dell=1e-10;
+        int q_max_wasp_iters=5;
+        int v_max_wasp_iters=5;
+        int a_max_wasp_iters=5;
+        int u_max_wasp_iters=5;
     };
 }
 

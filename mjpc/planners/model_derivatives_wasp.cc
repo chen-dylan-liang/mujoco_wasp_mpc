@@ -35,27 +35,32 @@ namespace mjpc {
         int nv = m->nv, na = m->na, nu = m->nu;
         if (needs_allocate_cache) {
             for (int t=0; t<T; ++t) {
-                DyDq.push_back(mj_newWASPCache(nv,dim_state,use_wasp_identity_basis));
-                DyDv.push_back(mj_newWASPCache(nv,dim_state,use_wasp_identity_basis));
-                DyDa.push_back(mj_newWASPCache(na,dim_state,use_wasp_identity_basis));
-                DyDu.push_back(mj_newWASPCache(nu,dim_state,use_wasp_identity_basis));
-                DsDq.push_back(mj_newWASPCache(nv,dim_sensor,use_wasp_identity_basis));
-                DsDv.push_back(mj_newWASPCache(nv,dim_sensor,use_wasp_identity_basis));
-                DsDa.push_back(mj_newWASPCache(na,dim_sensor,use_wasp_identity_basis));
-                DsDu.push_back(mj_newWASPCache(nu,dim_sensor,use_wasp_identity_basis));
+                DyDq.push_back(mj_newWASPCache(nv,dim_state,1,use_wasp_identity_basis));
+                DyDv.push_back(mj_newWASPCache(nv,dim_state,1,use_wasp_identity_basis));
+                DyDa.push_back(mj_newWASPCache(na,dim_state,1,use_wasp_identity_basis));
+                DyDu.push_back(mj_newWASPCache(nu,dim_state,1,use_wasp_identity_basis));
+                // Ds caches use the same bases as these of Dy caches
+                DsDq.push_back(mj_newWASPCache(nv,dim_sensor,0,use_wasp_identity_basis));
+                DsDv.push_back(mj_newWASPCache(nv,dim_sensor,0,use_wasp_identity_basis));
+                DsDa.push_back(mj_newWASPCache(na,dim_sensor,0,use_wasp_identity_basis));
+                DsDu.push_back(mj_newWASPCache(nu,dim_sensor,0,use_wasp_identity_basis));
+                mj_copyWASPCacheBasis(DsDq[t], DyDq[t], nv);
+                mj_copyWASPCacheBasis(DsDv[t], DyDv[t], nv);
+                mj_copyWASPCacheBasis(DsDa[t], DyDa[t], na);
+                mj_copyWASPCacheBasis(DsDu[t], DyDu[t], nu);
             }
             needs_allocate_cache = false;
         }
         else if (needs_reset_cache) {
             for (int t=0; t<T; ++t) {
-                mj_resetWASPCache(DyDq[t], nv,dim_state,use_wasp_identity_basis);
-                mj_resetWASPCache(DyDv[t], nv,dim_state,use_wasp_identity_basis);
-                mj_resetWASPCache(DyDa[t], na,dim_state,use_wasp_identity_basis);
-                mj_resetWASPCache(DyDu[t], nu,dim_state,use_wasp_identity_basis);
-                mj_resetWASPCache(DsDq[t], nv,dim_sensor,use_wasp_identity_basis);
-                mj_resetWASPCache(DsDv[t], nv,dim_sensor,use_wasp_identity_basis);
-                mj_resetWASPCache(DsDa[t], na,dim_sensor,use_wasp_identity_basis);
-                mj_resetWASPCache(DsDu[t], nu,dim_sensor,use_wasp_identity_basis);
+                mj_zeroWASPCache(DyDq[t], 0,dim_state);
+                mj_zeroWASPCache(DyDv[t], 0,dim_state);
+                mj_zeroWASPCache(DyDa[t], 0,dim_state);
+                mj_zeroWASPCache(DyDu[t], 0,dim_state);
+                mj_zeroWASPCache(DsDq[t], 0,dim_sensor);
+                mj_zeroWASPCache(DsDv[t], 0,dim_sensor);
+                mj_zeroWASPCache(DsDa[t], 0,dim_sensor);
+                mj_zeroWASPCache(DsDu[t], 0,dim_sensor);
             }
             needs_reset_cache = false;
         }
@@ -70,7 +75,9 @@ namespace mjpc {
         int mode,
         ThreadPool &pool) {
         pool.Schedule([&m, &data, &A = A, &B = B, &C = C, &D = D, &DyDq = DyDq, &DyDv = DyDv, &DyDa= DyDa, &DyDu=DyDu,
-               &DsDq = DsDq, &DsDv = DsDv, &DsDa= DsDa, &DsDu=DsDu, dtheta=dtheta, dell=dell, max_wasp_iters=max_wasp_iters,
+               &DsDq = DsDq, &DsDv = DsDv, &DsDa= DsDa, &DsDu=DsDu,
+               q_dtheta=q_dtheta, q_dell=q_dell,v_dtheta=v_dtheta, v_dell=v_dell,a_dtheta=a_dtheta, a_dell=a_dell,u_dtheta=u_dtheta, u_dell=u_dell,
+               q_max_wasp_iters=q_max_wasp_iters,v_max_wasp_iters=v_max_wasp_iters,a_max_wasp_iters=a_max_wasp_iters,u_max_wasp_iters=u_max_wasp_iters,
                &x, &u, &h,
                dim_state, dim_state_derivative, dim_action, dim_sensor, tol,
                mode, t, T]()
@@ -88,10 +95,10 @@ namespace mjpc {
           if (t == T - 1) {
             // Jacobians
             mjd_transitionWASP(m, d, tol, mode,
-                               dtheta, dell, max_wasp_iters,
-                               dtheta, dell, max_wasp_iters,
-                               dtheta, dell, max_wasp_iters,
-                               dtheta, dell, max_wasp_iters,
+                               q_dtheta, q_dell, q_max_wasp_iters,
+                               v_dtheta, v_dell, v_max_wasp_iters,
+                               a_dtheta, a_dell, a_max_wasp_iters,
+                               u_dtheta, u_dell, u_max_wasp_iters,
                               nullptr,
                               nullptr,
                              DataAt(C, t * (dim_sensor * dim_state_derivative)),
@@ -102,10 +109,10 @@ namespace mjpc {
             // derivatives
             mjd_transitionWASP(
                 m, d, tol, mode,
-                dtheta, dell, max_wasp_iters,
-                dtheta, dell, max_wasp_iters,
-                dtheta, dell, max_wasp_iters,
-                dtheta, dell, max_wasp_iters,
+                q_dtheta, q_dell, q_max_wasp_iters,
+                v_dtheta, v_dell, v_max_wasp_iters,
+                a_dtheta, a_dell, a_max_wasp_iters,
+                u_dtheta, u_dell, u_max_wasp_iters,
                 DataAt(A, t * (dim_state_derivative * dim_state_derivative)),
                 DataAt(B, t * (dim_state_derivative * dim_action)),
                 DataAt(C, t * (dim_sensor * dim_state_derivative)),
