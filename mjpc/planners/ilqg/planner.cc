@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <iostream>
+#include <string>
 #include <shared_mutex>
 
 #include <mujoco/mujoco.h>
@@ -251,6 +252,32 @@ namespace mjpc {
 
     // planner-specific GUI elements
     void iLQGPlanner::GUI(mjUI &ui) {
+        mjuiDef wasp_iter_q, wasp_iter_v, wasp_iter_a, wasp_iter_u;
+        // init for q
+        wasp_iter_q.type = mjITEM_SLIDERINT;
+        std::snprintf(wasp_iter_q.name, sizeof(wasp_iter_q.name), "%s", "WASP Iter. q");
+        wasp_iter_q.state = 2;
+        wasp_iter_q.pdata = &wasp_md.q_max_wasp_iters;
+        std::snprintf( wasp_iter_q.other, sizeof(wasp_iter_q.other), "1 %d", model->nq);
+        // init for v
+        wasp_iter_v.type = mjITEM_SLIDERINT;
+        std::snprintf(wasp_iter_v.name, sizeof(wasp_iter_v.name), "%s", "WASP Iter. v");
+        wasp_iter_v.state = 2;
+        wasp_iter_v.pdata = &wasp_md.v_max_wasp_iters;
+        std::snprintf( wasp_iter_v.other, sizeof(wasp_iter_v.other), "1 %d", model->nv);
+        // init for a
+        wasp_iter_a.type = mjITEM_SLIDERINT;
+        std::snprintf(wasp_iter_a.name, sizeof(wasp_iter_a.name), "%s", "WASP Iter. a");
+        wasp_iter_a.state = 2;
+        wasp_iter_a.pdata = &wasp_md.a_max_wasp_iters;
+        std::snprintf( wasp_iter_a.other, sizeof(wasp_iter_a.other), "1 %d", model->na);
+        // init for u
+        wasp_iter_u.type = mjITEM_SLIDERINT;
+        std::snprintf(wasp_iter_u.name, sizeof(wasp_iter_u.name), "%s", "WASP Iter. u");
+        wasp_iter_u.state = 2;
+        wasp_iter_u.pdata = &wasp_md.u_max_wasp_iters;
+        std::snprintf( wasp_iter_u.other, sizeof(wasp_iter_u.other), "1 %d", model->nu);
+
         mjuiDef defiLQG[] = {
             {mjITEM_SLIDERINT, "Rollouts", 2, &num_rollouts_gui_, "0 1"},
             // {mjITEM_RADIO, "Action Lmt.", 2, &settings.action_limits, "Off\nOn"},
@@ -265,10 +292,7 @@ namespace mjpc {
             {mjITEM_SLIDERINT, "Deriv. Skip", 2, &derivative_skip_, "0 16"},
             {mjITEM_CHECKINT, "Terminal Print", 2, &settings.verbose, ""},
             {mjITEM_SELECT, "MD Engine", 2, &md_engine, "FD\nWASP\n"},
-            {mjITEM_SLIDERINT, "WASP Iter. q", 2, &(wasp_md.q_max_wasp_iters), "0 16"},
-            {mjITEM_SLIDERINT, "WASP Iter. v", 2, &(wasp_md.v_max_wasp_iters), "0 16"},
-            {mjITEM_SLIDERINT, "WASP Iter. a", 2, &(wasp_md.a_max_wasp_iters), "0 16"},
-            {mjITEM_SLIDERINT, "WASP Iter. u", 2, &(wasp_md.u_max_wasp_iters), "0 16"},
+            wasp_iter_q, wasp_iter_v, wasp_iter_a, wasp_iter_u,
             {mjITEM_SLIDERNUM, "WASP q_dtheta", 2, &(wasp_md.q_dtheta), "0 1"},
             {mjITEM_SLIDERNUM, "WASP v_dtheta", 2, &(wasp_md.v_dtheta), "0 1"},
             {mjITEM_SLIDERNUM, "WASP a_dtheta", 2, &(wasp_md.a_dtheta), "0 1"},

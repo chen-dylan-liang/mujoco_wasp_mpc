@@ -92,10 +92,10 @@ namespace mjpc {
         double v_dtheta=1e-10, v_dell=1e-10;
         double a_dtheta=1e-10, a_dell=1e-10;
         double u_dtheta=1e-10, u_dell=1e-10;
-        int q_max_wasp_iters=5;
-        int v_max_wasp_iters=5;
-        int a_max_wasp_iters=5;
-        int u_max_wasp_iters=5;
+        int q_max_wasp_iters=1;
+        int v_max_wasp_iters=1;
+        int a_max_wasp_iters=1;
+        int u_max_wasp_iters=1;
     };
 }
 
