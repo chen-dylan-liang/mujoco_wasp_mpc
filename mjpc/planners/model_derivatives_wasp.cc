@@ -35,10 +35,10 @@ namespace mjpc {
         int nv = m->nv, na = m->na, nu = m->nu;
         if (needs_allocate_cache) {
             for (int t=0; t<T; ++t) {
-                DyDq.push_back(mj_newWASPCache(nv,dim_state,1,use_wasp_identity_basis));
-                DyDv.push_back(mj_newWASPCache(nv,dim_state,1,use_wasp_identity_basis));
-                DyDa.push_back(mj_newWASPCache(na,dim_state,1,use_wasp_identity_basis));
-                DyDu.push_back(mj_newWASPCache(nu,dim_state,1,use_wasp_identity_basis));
+                DyDq.push_back(mj_newWASPCache(nv,dim_state_derivative,1,use_wasp_identity_basis));
+                DyDv.push_back(mj_newWASPCache(nv,dim_state_derivative,1,use_wasp_identity_basis));
+                DyDa.push_back(mj_newWASPCache(na,dim_state_derivative,1,use_wasp_identity_basis));
+                DyDu.push_back(mj_newWASPCache(nu,dim_state_derivative,1,use_wasp_identity_basis));
                 // Ds caches use the same bases as these of Dy caches
                 DsDq.push_back(mj_newWASPCache(nv,dim_sensor,0,use_wasp_identity_basis));
                 DsDv.push_back(mj_newWASPCache(nv,dim_sensor,0,use_wasp_identity_basis));
@@ -53,14 +53,14 @@ namespace mjpc {
         }
         else if (needs_reset_cache) {
             for (int t=0; t<T; ++t) {
-                mj_zeroWASPCache(DyDq[t], 0,dim_state);
-                mj_zeroWASPCache(DyDv[t], 0,dim_state);
-                mj_zeroWASPCache(DyDa[t], 0,dim_state);
-                mj_zeroWASPCache(DyDu[t], 0,dim_state);
-                mj_zeroWASPCache(DsDq[t], 0,dim_sensor);
-                mj_zeroWASPCache(DsDv[t], 0,dim_sensor);
-                mj_zeroWASPCache(DsDa[t], 0,dim_sensor);
-                mj_zeroWASPCache(DsDu[t], 0,dim_sensor);
+                mj_zeroWASPCache(DyDq[t], nv,dim_state_derivative);
+                mj_zeroWASPCache(DyDv[t], nv,dim_state_derivative);
+                mj_zeroWASPCache(DyDa[t], na,dim_state_derivative);
+                mj_zeroWASPCache(DyDu[t], nu,dim_state_derivative);
+                mj_zeroWASPCache(DsDq[t], nv,dim_sensor);
+                mj_zeroWASPCache(DsDv[t], nv,dim_sensor);
+                mj_zeroWASPCache(DsDa[t], na,dim_sensor);
+                mj_zeroWASPCache(DsDu[t], nu,dim_sensor);
             }
             needs_reset_cache = false;
         }
@@ -85,23 +85,12 @@ namespace mjpc {
                  tol, mode, t, T]()  // copy small scalars
   {
     mjData* d = (*data_ptr)[ThreadPool::WorkerId()].get();
-
     // set state/time
     SetState(m, d, x + t * dim_state);
     d->time = h[t];
 
     // set action
     mju_copy(d->ctrl, u + t * dim_action, dim_action);
-
-    // local aliases to per-t caches (members)
-    mjWASPCache* DyDqLocal = this->DyDq[t];
-    mjWASPCache* DyDvLocal = this->DyDv[t];
-    mjWASPCache* DyDaLocal = this->DyDa[t];
-    mjWASPCache* DyDuLocal = this->DyDu[t];
-    mjWASPCache* DsDqLocal = this->DsDq[t];
-    mjWASPCache* DsDvLocal = this->DsDv[t];
-    mjWASPCache* DsDaLocal = this->DsDa[t];
-    mjWASPCache* DsDuLocal = this->DsDu[t];
 
     if (t == T - 1) {
       mjd_transitionWASP(
@@ -115,7 +104,7 @@ namespace mjpc {
           /*C*/ DataAt(this->C, t * (dim_sensor * dim_state_derivative)),
           /*D*/ nullptr,
           /*DyDq..DyDu*/ nullptr, nullptr, nullptr, nullptr,
-          /*DsDq..DsDu*/ DsDqLocal, DsDvLocal, DsDaLocal, nullptr);
+          /*DsDq..DsDu*/ this->DsDq[t], this->DsDv[t], this->DsDa[t], nullptr);
     } else {
       mjd_transitionWASP(
           m, d, tol, mode,
@@ -127,8 +116,8 @@ namespace mjpc {
           /*B*/ DataAt(this->B, t * (dim_state_derivative * dim_action)),
           /*C*/ DataAt(this->C, t * (dim_sensor * dim_state_derivative)),
           /*D*/ DataAt(this->D, t * (dim_sensor * dim_action)),
-          /*DyDq..DyDu*/ DyDqLocal, DyDvLocal, DyDaLocal, DyDuLocal,
-          /*DsDq..DsDu*/ DsDqLocal, DsDvLocal, DsDaLocal, DsDuLocal);
+          /*DyDq..DyDu*/ this->DyDq[t],this->DyDv[t], this->DyDa[t], this->DyDu[t],
+          /*DsDq..DsDu*/ this->DsDq[t], this->DsDv[t], this->DsDa[t], this->DsDu[t]);
     }
   });
 }

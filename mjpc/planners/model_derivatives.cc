@@ -101,7 +101,8 @@ void ModelDerivatives::Compute(const mjModel* m,
   for (int t = s; t < T - s; t += s) {
     evaluate_.push_back(t);
   }
-  evaluate_.push_back(T - 2);
+  // bro what the f**k? Pushing this when s=1 results in data race later because T-2 is pushed twice!!! evaluate_.push_back(T - 2);
+  if (s>1) evaluate_.push_back(T - 2);
   evaluate_.push_back(T - 1);
 
   // interpolate indices
@@ -115,8 +116,9 @@ void ModelDerivatives::Compute(const mjModel* m,
 
   // evaluate derivatives
   int count_before = pool.GetCount();
-  for (int t : evaluate_) OneStepDerivatives(m, data, x, u, h, dim_state, dim_state_derivative, dim_action, dim_sensor, t,
-    T, tol, mode, pool);
+  for (int t : evaluate_)
+    OneStepDerivatives(m, data, x, u, h, dim_state, dim_state_derivative, dim_action, dim_sensor, t,
+T, tol, mode, pool);
   pool.WaitCount(count_before + evaluate_.size());
   pool.ResetCount();
 

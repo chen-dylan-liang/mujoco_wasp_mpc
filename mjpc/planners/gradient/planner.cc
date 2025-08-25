@@ -121,6 +121,7 @@ namespace mjpc {
     // model derivatives
     fd_md.Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
     wasp_md.Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
+    wasp_md.a_max_wasp_iters = std::min(1, model->na);
 
     // cost derivatives
     cost_derivative.Reset(dim_state_derivative, dim_action, task->num_residual,
@@ -479,7 +480,7 @@ namespace mjpc {
     std::snprintf(wasp_iter_q.name, sizeof(wasp_iter_q.name), "%s", "WASP Iter. q");
     wasp_iter_q.state = 2;
     wasp_iter_q.pdata = &wasp_md.q_max_wasp_iters;
-    std::snprintf( wasp_iter_q.other, sizeof(wasp_iter_q.other), "1 %d", model->nq);
+    std::snprintf( wasp_iter_q.other, sizeof(wasp_iter_q.other), "1 %d", model->nv);
     // init for v
     wasp_iter_v.type = mjITEM_SLIDERINT;
     std::snprintf(wasp_iter_v.name, sizeof(wasp_iter_v.name), "%s", "WASP Iter. v");
@@ -491,7 +492,7 @@ namespace mjpc {
     std::snprintf(wasp_iter_a.name, sizeof(wasp_iter_a.name), "%s", "WASP Iter. a");
     wasp_iter_a.state = 2;
     wasp_iter_a.pdata = &wasp_md.a_max_wasp_iters;
-    std::snprintf( wasp_iter_a.other, sizeof(wasp_iter_a.other), "1 %d", model->na);
+    std::snprintf( wasp_iter_a.other, sizeof(wasp_iter_a.other), "%d %d",std::min(model->na,1) ,model->na);
     // init for u
     wasp_iter_u.type = mjITEM_SLIDERINT;
     std::snprintf(wasp_iter_u.name, sizeof(wasp_iter_u.name), "%s", "WASP Iter. u");
