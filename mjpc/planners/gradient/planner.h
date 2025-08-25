@@ -132,11 +132,6 @@ class GradientPlanner : public Planner {
   ModelDerivativesWASP wasp_md;
   // model derivative engine in use
   ModelDerivativesType md_engine=FD;
-  // model derivative switch set by GUI interface
-  // -1: has been switched
-  // 0: to be switched to FD
-  // 1: to be switched to WASP
-  int md_switch=-1;
 
   // cost derivatives
   CostDerivatives cost_derivative;

@@ -42,41 +42,46 @@ void ModelDerivatives::Reset(int dim_state_derivative, int dim_action,
 }
 
 // compute derivatives at all time steps
-void ModelDerivatives::OneStepDerivatives(const mjModel* m,
-                                          const std::vector<UniqueMjData>& data,
-                                          const double* x, const double* u, const double* h,
-                                          int dim_state, int dim_state_derivative, int dim_action, int dim_sensor,
-                                          int t, int T,
-                                          double tol,
-                                          int mode,
-                                          ThreadPool& pool) {
-  pool.Schedule([&m, &data, &A = A, &B = B, &C = C, &D = D, &x, &u, &h,
-               dim_state, dim_state_derivative, dim_action, dim_sensor, tol,
-               mode, t, T]() {
-  mjData* d = data[ThreadPool::WorkerId()].get();
-  // set state
-  SetState(m, d, x + t * dim_state);
-  d->time = h[t];
+  void ModelDerivatives::OneStepDerivatives(
+      const mjModel* m,
+      const std::vector<UniqueMjData>& data,
+      const double* x, const double* u, const double* h,
+      int dim_state, int dim_state_derivative, int dim_action, int dim_sensor,
+      int t, int T, double tol, int mode, ThreadPool& pool) {
 
-  // set action
-  mju_copy(d->ctrl, u + t * dim_action, dim_action);
+  // capture a stable pointer to the vector (the vector itself outlives the task)
+  auto data_ptr = &data;
 
-  // Jacobians
-  if (t == T - 1) {
+  pool.Schedule([this,           // to access A, B, C, D, DataAt(...)
+                 m,              // copy pointer
+                 data_ptr,       // copy pointer to vector
+                 x, u, h,        // copy pointers
+                 dim_state, dim_state_derivative, dim_action, dim_sensor,
+                 tol, mode, t, T]() {
+
+    mjData* d = (*data_ptr)[ThreadPool::WorkerId()].get();
+
+    // set state
+    SetState(m, d, x + t * dim_state);
+    d->time = h[t];
+
+    // set action
+    mju_copy(d->ctrl, u + t * dim_action, dim_action);
+
     // Jacobians
-    mjd_transitionFD(m, d, tol, mode, nullptr, nullptr,
-                     DataAt(C, t * (dim_sensor * dim_state_derivative)),
-                     nullptr);
-  } else {
-    // derivatives
-    mjd_transitionFD(
-        m, d, tol, mode,
-        DataAt(A, t * (dim_state_derivative * dim_state_derivative)),
-        DataAt(B, t * (dim_state_derivative * dim_action)),
-        DataAt(C, t * (dim_sensor * dim_state_derivative)),
-        DataAt(D, t * (dim_sensor * dim_action)));
-  }
-});
+    if (t == T - 1) {
+      mjd_transitionFD(m, d, tol, mode,
+                       nullptr, nullptr,
+                       DataAt(this->C, t * (dim_sensor * dim_state_derivative)),
+                       nullptr);
+    } else {
+      mjd_transitionFD(m, d, tol, mode,
+                       DataAt(this->A, t * (dim_state_derivative * dim_state_derivative)),
+                       DataAt(this->B, t * (dim_state_derivative * dim_action)),
+                       DataAt(this->C, t * (dim_sensor * dim_state_derivative)),
+                       DataAt(this->D, t * (dim_sensor * dim_action)));
+    }
+  });
 }
 
 void ModelDerivatives::Compute(const mjModel* m,

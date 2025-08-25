@@ -202,15 +202,13 @@ namespace mjpc {
     int skip = derivative_skip_;
     for (int i = 0; i < settings.max_rollout; i++) {
       // ----- model derivatives ----- //
-      if (md_switch != -1) {
-        if (md_switch == 0 && md_engine != FD) {
-          model_derivative = &fd_md;
-          model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
-        } else if (md_switch == 1 && md_engine != WASP) {
-          model_derivative = &wasp_md;
-          model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
-        }
-        md_switch = -1;
+      if (md_engine == FD) {
+        //std::cout<<"switch to FD!"<<std::endl;
+        model_derivative = &fd_md;
+        //model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
+      } else if (md_engine == WASP) {
+        model_derivative = &wasp_md;
+        //model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
       }
       // start timer
       auto model_derivative_start = std::chrono::steady_clock::now();
@@ -485,7 +483,7 @@ namespace mjpc {
       },
       {mjITEM_SLIDERINT, "Spline Pts", 2, &policy.num_spline_points, "0 1"},
       {mjITEM_SLIDERINT, "Deriv. Skip", 2, &derivative_skip_, "0 16"},
-      {mjITEM_SELECT, "MD Engine", 2, &md_switch, "FD\nWASP\n"},
+      {mjITEM_SELECT, "MD Engine", 2, &md_engine, "FD\nWASP\n"},
       {mjITEM_SLIDERINT, "WASP Iter. q", 2, &(wasp_md.q_max_wasp_iters), "0 16"},
       {mjITEM_SLIDERINT, "WASP Iter. v", 2, &(wasp_md.v_max_wasp_iters), "0 16"},
       {mjITEM_SLIDERINT, "WASP Iter. a", 2, &(wasp_md.a_max_wasp_iters), "0 16"},

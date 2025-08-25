@@ -66,63 +66,73 @@ namespace mjpc {
         }
         ModelDerivatives::Compute(m, data, x, u, h, dim_state, dim_state_derivative, dim_action, dim_sensor, T, tol, mode, pool, skip);
     }
-    void ModelDerivativesWASP::OneStepDerivatives(const mjModel *m,
-        const std::vector<UniqueMjData> &data,
-        const double *x, const double *u, const double *h,
-        int dim_state, int dim_state_derivative, int dim_action, int dim_sensor,
-        int t, int T,
-        double tol,
-        int mode,
-        ThreadPool &pool) {
-        pool.Schedule([&m, &data, &A = A, &B = B, &C = C, &D = D, &DyDq = DyDq, &DyDv = DyDv, &DyDa= DyDa, &DyDu=DyDu,
-               &DsDq = DsDq, &DsDv = DsDv, &DsDa= DsDa, &DsDu=DsDu,
-               q_dtheta=q_dtheta, q_dell=q_dell,v_dtheta=v_dtheta, v_dell=v_dell,a_dtheta=a_dtheta, a_dell=a_dell,u_dtheta=u_dtheta, u_dell=u_dell,
-               q_max_wasp_iters=q_max_wasp_iters,v_max_wasp_iters=v_max_wasp_iters,a_max_wasp_iters=a_max_wasp_iters,u_max_wasp_iters=u_max_wasp_iters,
-               &x, &u, &h,
-               dim_state, dim_state_derivative, dim_action, dim_sensor, tol,
-               mode, t, T]()
-       {
-          mjData* d = data[ThreadPool::WorkerId()].get();
-          // set state
-          SetState(m, d, x + t * dim_state);
-          d->time = h[t];
-          mjWASPCache *DyDqLocal = DyDq[t], *DyDvLocal = DyDv[t], *DyDaLocal = DyDa[t], *DyDuLocal= DyDu[t];
-            mjWASPCache *DsDqLocal = DsDq[t], *DsDvLocal = DsDv[t], *DsDaLocal = DsDa[t], *DsDuLocal= DsDu[t];
-          // set action
-          mju_copy(d->ctrl, u + t * dim_action, dim_action);
 
-          // Jacobians
-          if (t == T - 1) {
-            // Jacobians
-            mjd_transitionWASP(m, d, tol, mode,
-                               q_dtheta, q_dell, q_max_wasp_iters,
-                               v_dtheta, v_dell, v_max_wasp_iters,
-                               a_dtheta, a_dell, a_max_wasp_iters,
-                               u_dtheta, u_dell, u_max_wasp_iters,
-                              nullptr,
-                              nullptr,
-                             DataAt(C, t * (dim_sensor * dim_state_derivative)),
-                             nullptr,
-                             nullptr, nullptr, nullptr, nullptr,
-                             DsDqLocal, DsDvLocal, DsDaLocal,nullptr);
-          } else {
-            // derivatives
-            mjd_transitionWASP(
-                m, d, tol, mode,
-                q_dtheta, q_dell, q_max_wasp_iters,
-                v_dtheta, v_dell, v_max_wasp_iters,
-                a_dtheta, a_dell, a_max_wasp_iters,
-                u_dtheta, u_dell, u_max_wasp_iters,
-                DataAt(A, t * (dim_state_derivative * dim_state_derivative)),
-                DataAt(B, t * (dim_state_derivative * dim_action)),
-                DataAt(C, t * (dim_sensor * dim_state_derivative)),
-                DataAt(D, t * (dim_sensor * dim_action)),
-                DyDqLocal, DyDvLocal, DyDaLocal, DyDuLocal,
-                DsDqLocal, DsDvLocal, DsDaLocal, DsDuLocal
-                );
-          }
-});
+    void ModelDerivativesWASP::OneStepDerivatives(
+    const mjModel* m,
+    const std::vector<UniqueMjData>& data,
+    const double* x, const double* u, const double* h,
+    int dim_state, int dim_state_derivative, int dim_action, int dim_sensor,
+    int t, int T, double tol, int mode, ThreadPool& pool) {
+
+  // Stable pointer to the vector; avoids copying and avoids dangling ref-to-param.
+  auto data_ptr = &data;
+
+  pool.Schedule([this,               // access A,B,C,D, Dy*, Ds*, q_*, v_*, a_*, u_*...
+                 m,                  // copy pointer
+                 data_ptr,           // copy pointer to vector
+                 x, u, h,            // copy pointers
+                 dim_state, dim_state_derivative, dim_action, dim_sensor,
+                 tol, mode, t, T]()  // copy small scalars
+  {
+    mjData* d = (*data_ptr)[ThreadPool::WorkerId()].get();
+
+    // set state/time
+    SetState(m, d, x + t * dim_state);
+    d->time = h[t];
+
+    // set action
+    mju_copy(d->ctrl, u + t * dim_action, dim_action);
+
+    // local aliases to per-t caches (members)
+    mjWASPCache* DyDqLocal = this->DyDq[t];
+    mjWASPCache* DyDvLocal = this->DyDv[t];
+    mjWASPCache* DyDaLocal = this->DyDa[t];
+    mjWASPCache* DyDuLocal = this->DyDu[t];
+    mjWASPCache* DsDqLocal = this->DsDq[t];
+    mjWASPCache* DsDvLocal = this->DsDv[t];
+    mjWASPCache* DsDaLocal = this->DsDa[t];
+    mjWASPCache* DsDuLocal = this->DsDu[t];
+
+    if (t == T - 1) {
+      mjd_transitionWASP(
+          m, d, tol, mode,
+          this->q_dtheta, this->q_dell, this->q_max_wasp_iters,
+          this->v_dtheta, this->v_dell, this->v_max_wasp_iters,
+          this->a_dtheta, this->a_dell, this->a_max_wasp_iters,
+          this->u_dtheta, this->u_dell, this->u_max_wasp_iters,
+          /*A*/ nullptr,
+          /*B*/ nullptr,
+          /*C*/ DataAt(this->C, t * (dim_sensor * dim_state_derivative)),
+          /*D*/ nullptr,
+          /*DyDq..DyDu*/ nullptr, nullptr, nullptr, nullptr,
+          /*DsDq..DsDu*/ DsDqLocal, DsDvLocal, DsDaLocal, nullptr);
+    } else {
+      mjd_transitionWASP(
+          m, d, tol, mode,
+          this->q_dtheta, this->q_dell, this->q_max_wasp_iters,
+          this->v_dtheta, this->v_dell, this->v_max_wasp_iters,
+          this->a_dtheta, this->a_dell, this->a_max_wasp_iters,
+          this->u_dtheta, this->u_dell, this->u_max_wasp_iters,
+          /*A*/ DataAt(this->A, t * (dim_state_derivative * dim_state_derivative)),
+          /*B*/ DataAt(this->B, t * (dim_state_derivative * dim_action)),
+          /*C*/ DataAt(this->C, t * (dim_sensor * dim_state_derivative)),
+          /*D*/ DataAt(this->D, t * (dim_sensor * dim_action)),
+          /*DyDq..DyDu*/ DyDqLocal, DyDvLocal, DyDaLocal, DyDuLocal,
+          /*DsDq..DsDu*/ DsDqLocal, DsDvLocal, DsDaLocal, DsDuLocal);
     }
+  });
+}
+
 
 
 
