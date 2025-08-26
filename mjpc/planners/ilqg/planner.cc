@@ -119,7 +119,10 @@ namespace mjpc {
         // model derivatives
         fd_md.Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
         wasp_md.Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
-        wasp_md.a_max_wasp_iters = std::min(1, model->na);
+        wasp_md.q_max_wasp_iters = model->nv;
+        wasp_md.v_max_wasp_iters = model->nv;
+        wasp_md.a_max_wasp_iters = model->na;
+        wasp_md.u_max_wasp_iters = model->nu;
         // cost derivatives
         cost_derivative.Reset(dim_state_derivative, dim_action, task->num_residual,
                               horizon);
@@ -166,7 +169,6 @@ namespace mjpc {
         UpdateNumTrajectoriesFromGUI();
         // get nominal trajectory
         this->NominalTrajectory(horizon, pool);
-
         // iteration
         this->Iteration(horizon, pool);
     }

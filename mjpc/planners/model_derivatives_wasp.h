@@ -7,6 +7,7 @@
 
 #include "model_derivatives.h"
 #include <mujoco/mujoco.h>
+#include <boost/circular_buffer.hpp>
 
 #include <cstdlib>
 #include <vector>
@@ -78,10 +79,10 @@ namespace mjpc {
             double tol,
             int mode,
             ThreadPool &pool) override;
-        std::vector<mjWASPCache*> DyDq, DyDv, DyDa;
-        std::vector<mjWASPCache*> DyDu;
-        std::vector<mjWASPCache*> DsDq, DsDv, DsDa;
-        std::vector<mjWASPCache*> DsDu;
+    boost::circular_buffer<mjWASPCache*> DyDq, DyDv, DyDa;//   std::vector<mjWASPCache*> DyDq, DyDv, DyDa;
+     boost::circular_buffer<mjWASPCache*>   DyDu; //  std::vector<mjWASPCache*> DyDu;
+       boost::circular_buffer<mjWASPCache*> DsDq, DsDv, DsDa;// std::vector<mjWASPCache*> DsDq, DsDv, DsDa;
+        boost::circular_buffer<mjWASPCache*>   DsDu; // std::vector<mjWASPCache*> DsDu;
         bool needs_allocate_cache=true;
         bool needs_reset_cache=false;
         bool use_wasp_identity_basis=true;

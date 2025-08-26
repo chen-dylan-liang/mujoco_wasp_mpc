@@ -46,9 +46,9 @@ option(MJPC_BUILD_GRPC_SERVICE "Build MJPC gRPC service." OFF)
 option(PYMJPC_BUILD_TESTS "Build tests for Python bindings" ON)
 
 include(FindOrFetch)
-
 find_package(Python)
 find_package(Threads REQUIRED)
+find_package(Boost REQUIRED)
 
 set(MUJOCO_BUILD_EXAMPLES OFF)
 set(MUJOCO_BUILD_SIMULATE ON)

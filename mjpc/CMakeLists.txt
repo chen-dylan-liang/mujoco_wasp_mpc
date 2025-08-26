@@ -167,6 +167,7 @@ target_link_libraries(
   mujoco::platform_ui_adapter
   threadpool
   Threads::Threads
+  Boost::boost
   nlohmann_json::nlohmann_json
 )
 target_include_directories(libmjpc
@@ -189,6 +190,7 @@ target_link_libraries(
   mujoco::mujoco
   threadpool
   Threads::Threads
+  Boost::boost
 )
 target_include_directories(mjpc PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_compile_options(mjpc PUBLIC ${MJPC_COMPILE_OPTIONS})
@@ -213,6 +215,7 @@ target_link_libraries(
   mujoco::mujoco
   threadpool
   Threads::Threads
+  Boost::boost
 )
 target_include_directories(libtestspeed PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
