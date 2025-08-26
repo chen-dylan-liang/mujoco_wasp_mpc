@@ -70,6 +70,9 @@ namespace mjpc {
                const double* x, const double* u, const double* h, int dim_state,
                int dim_state_derivative, int dim_action, int dim_sensor, int T,
                double tol, int mode, ThreadPool& pool, int skip = 0) override;
+
+        // update cache n steps forward
+        void RolloutCache(int n, int dim_v, int dim_a, int dim_u, int dim_y, int dim_s);
     private:
         void OneStepDerivatives(const mjModel *m,
             const std::vector<UniqueMjData> &data,
