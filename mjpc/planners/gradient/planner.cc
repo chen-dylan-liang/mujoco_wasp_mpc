@@ -161,8 +161,10 @@ namespace mjpc {
 
   // set state
   void GradientPlanner::SetState(const State &state) {
+    double prev_time = this->time;
     state.CopyTo(this->state.data(), this->mocap.data(), this->userdata.data(),
                  &this->time);
+    delta_time = this->time - prev_time;
   }
 
   // optimize nominal policy via gradient descent
@@ -204,16 +206,19 @@ namespace mjpc {
     // update policy
     double c_best = c_prev;
     int skip = derivative_skip_;
+    // set model derivative engine before optimization begins
+    if (md_engine == FD) {
+      //std::cout<<"switch to FD!"<<std::endl;
+      model_derivative = &fd_md;
+      //model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
+    } else if (md_engine == WASP) {
+      model_derivative = &wasp_md;
+      wasp_md.RolloutCache((delta_time)/model->opt.timestep+1, model->nv, model->na, model->nu, 2*model->nv+model->na, model->nsensordata);
+      //wasp_md.needs_reset_cache=true;
+      //model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
+    }
     for (int i = 0; i < settings.max_rollout; i++) {
       // ----- model derivatives ----- //
-      if (md_engine == FD) {
-        //std::cout<<"switch to FD!"<<std::endl;
-        model_derivative = &fd_md;
-        //model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
-      } else if (md_engine == WASP) {
-        model_derivative = &wasp_md;
-        //model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
-      }
       // start timer
       auto model_derivative_start = std::chrono::steady_clock::now();
 

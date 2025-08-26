@@ -101,6 +101,7 @@ class GradientPlanner : public Planner {
   // state
   std::vector<double> state;
   double time;
+  double delta_time;
   std::vector<double> mocap;
   std::vector<double> userdata;
 
