@@ -31,27 +31,29 @@ namespace mjpc {
     }
 
     void ModelDerivativesWASP::RolloutCache(int n, int dim_v, int dim_a, int dim_u, int dim_y, int dim_s) {
-        // zero out the caches expired
-        for (int i=0; i<n; i++) {
-            mj_zeroWASPCache(DyDq[i], dim_v, dim_y);
-            mj_zeroWASPCache(DyDv[i], dim_v, dim_y);
-            mj_zeroWASPCache(DyDa[i], dim_a, dim_y);
-            mj_zeroWASPCache(DyDu[i], dim_u, dim_y);
-            mj_zeroWASPCache(DsDq[i], dim_v, dim_s);
-            mj_zeroWASPCache(DsDv[i], dim_v, dim_s);
-            mj_zeroWASPCache(DsDa[i], dim_a, dim_s);
-            mj_zeroWASPCache(DsDu[i], dim_u, dim_s);
-        }
-        // go forward n steps
-        for (int i=0; i<n; i++) {
-            DyDq.push_back(DyDq.front());
-            DyDv.push_back(DyDv.front());
-            DyDa.push_back(DyDa.front());
-            DyDu.push_back(DyDu.front());
-            DsDq.push_back(DsDq.front());
-            DsDv.push_back(DsDv.front());
-            DsDa.push_back(DsDa.front());
-            DsDu.push_back(DsDu.front());
+        if (!needs_allocate_cache&&!needs_reset_cache) {
+            // zero out the caches expired
+            for (int i=0; i<n; i++) {
+                mj_zeroWASPCache(DyDq[i], dim_v, dim_y);
+                mj_zeroWASPCache(DyDv[i], dim_v, dim_y);
+                mj_zeroWASPCache(DyDa[i], dim_a, dim_y);
+                mj_zeroWASPCache(DyDu[i], dim_u, dim_y);
+                mj_zeroWASPCache(DsDq[i], dim_v, dim_s);
+                mj_zeroWASPCache(DsDv[i], dim_v, dim_s);
+                mj_zeroWASPCache(DsDa[i], dim_a, dim_s);
+                mj_zeroWASPCache(DsDu[i], dim_u, dim_s);
+            }
+            // go forward n steps
+            for (int i=0; i<n; i++) {
+                DyDq.push_back(DyDq.front());
+                DyDv.push_back(DyDv.front());
+                DyDa.push_back(DyDa.front());
+                DyDu.push_back(DyDu.front());
+                DsDq.push_back(DsDq.front());
+                DsDv.push_back(DsDv.front());
+                DsDa.push_back(DsDa.front());
+                DsDu.push_back(DsDu.front());
+            }
         }
     }
 
