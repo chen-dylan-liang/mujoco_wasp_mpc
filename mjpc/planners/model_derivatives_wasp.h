@@ -88,7 +88,7 @@ namespace mjpc {
         boost::circular_buffer<mjWASPCache*>   DsDu; // std::vector<mjWASPCache*> DsDu;
         bool needs_allocate_cache=true;
         bool needs_reset_cache=false;
-        bool use_wasp_identity_basis=true;
+        bool use_wasp_identity_basis=false;
         // tuned interactively in planners' GUI
         friend class GradientPlanner;
         friend class iLQGPlanner;

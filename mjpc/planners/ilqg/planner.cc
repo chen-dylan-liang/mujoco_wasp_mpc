@@ -299,13 +299,13 @@ namespace mjpc {
             {mjITEM_SELECT, "MD Engine", 2, &md_engine, "FD\nWASP\n"},
             wasp_iter_q, wasp_iter_v, wasp_iter_a, wasp_iter_u,
             {mjITEM_SLIDERNUM, "WASP q_dtheta", 2, &(wasp_md.q_dtheta), "0 1"},
+{mjITEM_SLIDERNUM, "WASP q_ell", 2, &(wasp_md.q_dell), "0 1"},
             {mjITEM_SLIDERNUM, "WASP v_dtheta", 2, &(wasp_md.v_dtheta), "0 1"},
+{mjITEM_SLIDERNUM, "WASP v_ell", 2, &(wasp_md.v_dell), "0 1"},
             {mjITEM_SLIDERNUM, "WASP a_dtheta", 2, &(wasp_md.a_dtheta), "0 1"},
+{mjITEM_SLIDERNUM, "WASP a_ell", 2, &(wasp_md.a_dell), "0 1"},
             {mjITEM_SLIDERNUM, "WASP u_dtheta", 2, &(wasp_md.u_dtheta), "0 1"},
-            {mjITEM_SLIDERNUM, "WASP q_ell", 2, &(wasp_md.q_dell), "0 1"},
-            {mjITEM_SLIDERNUM, "WASP v_ell", 2, &(wasp_md.v_dell), "0 1"},
-            {mjITEM_SLIDERNUM, "WASP a_ell", 2, &(wasp_md.a_dell), "0 1"},
-            {mjITEM_SLIDERNUM, "WASP u_ell", 2, &(wasp_md.u_dell), "0 1"},
+{mjITEM_SLIDERNUM, "WASP u_ell", 2, &(wasp_md.u_dell), "0 1"},
             {mjITEM_END}
         };
 
@@ -447,8 +447,8 @@ namespace mjpc {
                 //model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
             } else if (md_engine == WASP) {
                 model_derivative = &wasp_md;
-                wasp_md.RolloutCache((delta_time)/model->opt.timestep+1, model->nv, model->na, model->nu, 2*model->nv+model->na, model->nsensordata);
-                //wasp_md.needs_reset_cache=true;
+                wasp_md.RolloutCache(delta_time/model->opt.timestep+1, model->nv, model->na, model->nu, 2*model->nv+model->na, model->nsensordata);
+               // wasp_md.needs_reset_cache=true;
                 //model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
             }
         // start timer

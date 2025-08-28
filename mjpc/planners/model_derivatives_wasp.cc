@@ -14,15 +14,6 @@ namespace mjpc {
     void ModelDerivativesWASP::Allocate(int dim_state_derivative, int dim_action, int dim_sensor,
                       int T) {
         ModelDerivatives::Allocate(dim_state_derivative, dim_action, dim_sensor, T);
-        DyDq.set_capacity(T);
-        DyDq.set_capacity(T);
-        DyDv.set_capacity(T);
-        DyDa.set_capacity(T);
-        DyDu.set_capacity(T);
-        DsDq.set_capacity(T);
-        DsDv.set_capacity(T);
-        DsDa.set_capacity(T);
-        DsDu.set_capacity(T);
         needs_allocate_cache = true;
     }
     void ModelDerivativesWASP::Reset(int dim_state_derivative, int dim_action, int dim_sensor, int T) {
@@ -63,6 +54,15 @@ namespace mjpc {
         // nu == dim_action
         int nv = m->nv, na = m->na, nu = m->nu;
         if (needs_allocate_cache) {
+            DyDq.set_capacity(T);
+            DyDq.set_capacity(T);
+            DyDv.set_capacity(T);
+            DyDa.set_capacity(T);
+            DyDu.set_capacity(T);
+            DsDq.set_capacity(T);
+            DsDv.set_capacity(T);
+            DsDa.set_capacity(T);
+            DsDu.set_capacity(T);
             for (int t=0; t<T; ++t) {
                 DyDq.push_back(mj_newWASPCache(nv,dim_state_derivative,1,use_wasp_identity_basis));
                 DyDv.push_back(mj_newWASPCache(nv,dim_state_derivative,1,use_wasp_identity_basis));
