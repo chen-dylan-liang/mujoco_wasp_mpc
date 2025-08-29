@@ -65,11 +65,11 @@ class ModelDerivatives {
   std::vector<int> evaluate_;
   std::vector<int> interpolate_;
 protected:
-    virtual void OneStepDerivatives(const mjModel* m,
+    virtual void ParaDerivEval(const mjModel* m,
                                           const std::vector<UniqueMjData>& data,
                                           const double* x, const double* u, const double* h,
                                           int dim_state, int dim_state_derivative, int dim_action, int dim_sensor,
-                                          int t, int T,
+                                          int T,
                                           double tol,
                                           int mode,
                                           ThreadPool& pool);

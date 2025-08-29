@@ -74,14 +74,30 @@ namespace mjpc {
         // update cache n steps forward
         void RolloutCache(int n, int dim_v, int dim_a, int dim_u, int dim_y, int dim_s);
     private:
-        void OneStepDerivatives(const mjModel *m,
+        void ParaDerivEval(const mjModel *m,
             const std::vector<UniqueMjData> &data,
             const double *x, const double *u, const double *h,
             int dim_state, int dim_state_derivative, int dim_action, int dim_sensor,
-            int t, int T,
+           int T,
             double tol,
             int mode,
             ThreadPool &pool) override;
+        void ParaTDerivEval(const mjModel *m,
+            const std::vector<UniqueMjData> &data,
+            const double *x, const double *u, const double *h,
+            int dim_state, int dim_state_derivative, int dim_action, int dim_sensor,
+           int T,
+            double tol,
+            int mode,
+            ThreadPool &pool);
+        void ParaAllDerivEval(const mjModel *m,
+            const std::vector<UniqueMjData> &data,
+            const double *x, const double *u, const double *h,
+            int dim_state, int dim_state_derivative, int dim_action, int dim_sensor,
+         int T,
+            double tol,
+            int mode,
+            ThreadPool &pool);
     boost::circular_buffer<mjWASPCache*> DyDq, DyDv, DyDa;//   std::vector<mjWASPCache*> DyDq, DyDv, DyDa;
      boost::circular_buffer<mjWASPCache*>   DyDu; //  std::vector<mjWASPCache*> DyDu;
        boost::circular_buffer<mjWASPCache*> DsDq, DsDv, DsDa;// std::vector<mjWASPCache*> DsDq, DsDv, DsDa;
@@ -89,6 +105,7 @@ namespace mjpc {
         bool needs_allocate_cache=true;
         bool needs_reset_cache=false;
         bool use_wasp_identity_basis=false;
+        bool all_in_parallel=false;
         // tuned interactively in planners' GUI
         friend class GradientPlanner;
         friend class iLQGPlanner;
