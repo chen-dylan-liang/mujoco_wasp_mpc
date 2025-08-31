@@ -15,11 +15,24 @@ namespace mjpc {
     void ModelDerivativesWASP::Allocate(int dim_state_derivative, int dim_action, int dim_sensor,
                                         int T) {
         ModelDerivatives::Allocate(dim_state_derivative, dim_action, dim_sensor, T);
+        if (all_in_parallel) {
+            AT.resize(dim_state_derivative * dim_state_derivative * T);
+            BT.resize(dim_state_derivative * dim_action * T);
+            CT.resize(dim_sensor * dim_state_derivative * T);
+            DT.resize(dim_sensor * dim_action * T);
+        }
         needs_allocate_cache = true;
     }
 
     void ModelDerivativesWASP::Reset(int dim_state_derivative, int dim_action, int dim_sensor, int T) {
         ModelDerivatives::Reset(dim_state_derivative, dim_action, dim_sensor, T);
+        if (all_in_parallel) {
+            std::fill(AT.begin(),
+AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
+            std::fill(BT.begin(), BT.begin() + T * dim_state_derivative * dim_action, 0.0);
+            std::fill(CT.begin(), CT.begin() + T * dim_sensor * dim_state_derivative, 0.0);
+            std::fill(DT.begin(), DT.begin() + T * dim_sensor * dim_action, 0.0);
+        }
         needs_reset_cache = true;
     }
 
@@ -91,7 +104,7 @@ namespace mjpc {
                 DsDu.push_back(mj_newWASPCache(nu, dim_sensor, 0, use_wasp_identity_basis));
                 mj_copyWASPCacheBasis(DsDq[t], DyDq[t], nv);
                 mj_copyWASPCacheBasis(DsDv[t], DyDv[t], nv);
-                mj_copyWASPCacheBasis(DsDa[t], DyDa[t], na);
+                if (m->na > 0) mj_copyWASPCacheBasis(DsDa[t], DyDa[t], na);
                 mj_copyWASPCacheBasis(DsDu[t], DyDu[t], nu);
             }
             needs_allocate_cache = false;
@@ -222,7 +235,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->q_dtheta, this->q_dell,
                                                                     this->q_max_wasp_iters,
-                                                                    DataAt(this->C,
+                                                                    DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative)),
                                                                     this->DsDq[t], mjDsDq);
                                         break;
@@ -231,7 +244,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->v_dtheta, this->v_dell,
                                                                     this->v_max_wasp_iters,
-                                                                    DataAt(this->C,
+                                                                    DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative) + m->
                                                                            nv * dim_sensor), this->DsDv[t], mjDsDv);
                                         break;
@@ -240,7 +253,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->a_dtheta, this->a_dell,
                                                                     this->a_max_wasp_iters,
-                                                                    DataAt(this->C,
+                                                                    DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative) + 2 *
                                                                            m->nv * dim_sensor), this->DsDa[t], mjDsDa);
                                         break;
@@ -249,7 +262,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->u_dtheta, this->u_dell,
                                                                     this->u_max_wasp_iters,
-                                                                    DataAt(this->D, t * (dim_sensor * dim_action)),
+                                                                    DataAt(this->DT, t * (dim_sensor * dim_action)),
                                                                     this->DsDu[t], mjDsDu);
                                         break;
                                     // DyDx
@@ -263,7 +276,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->q_dtheta, this->q_dell,
                                                                     this->q_max_wasp_iters,
-                                                                    DataAt(this->A,
+                                                                    DataAt(this->AT,
                                                                            t * (dim_state_derivative *
                                                                                dim_state_derivative)), this->DyDq[t],
                                                                     mjDyDq);
@@ -273,7 +286,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->v_dtheta, this->v_dell,
                                                                     this->v_max_wasp_iters,
-                                                                    DataAt(this->A,
+                                                                    DataAt(this->AT,
                                                                            t * (dim_state_derivative *
                                                                                dim_state_derivative) + m->nv *
                                                                            dim_state_derivative), this->DyDv[t],
@@ -284,7 +297,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->a_dtheta, this->a_dell,
                                                                     this->a_max_wasp_iters,
-                                                                    DataAt(this->A,
+                                                                    DataAt(this->AT,
                                                                            t * (dim_state_derivative *
                                                                                dim_state_derivative) + 2 * m->nv *
                                                                            dim_state_derivative), this->DyDa[t],
@@ -295,7 +308,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->u_dtheta, this->u_dell,
                                                                     this->u_max_wasp_iters,
-                                                                    DataAt(this->B,
+                                                                    DataAt(this->BT,
                                                                            t * (dim_state_derivative * dim_action)),
                                                                     this->DyDu[t], mjDyDu);
                                         break;
@@ -304,7 +317,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->q_dtheta, this->q_dell,
                                                                     this->q_max_wasp_iters,
-                                                                    DataAt(this->C,
+                                                                    DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative)),
                                                                     this->DsDq[t], mjDsDq);
                                         break;
@@ -313,7 +326,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->v_dtheta, this->v_dell,
                                                                     this->v_max_wasp_iters,
-                                                                    DataAt(this->C,
+                                                                    DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative) + m->
                                                                            nv * dim_sensor), this->DsDv[t], mjDsDv);
                                         break;
@@ -322,7 +335,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->a_dtheta, this->a_dell,
                                                                     this->a_max_wasp_iters,
-                                                                    DataAt(this->C,
+                                                                    DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative) + 2 *
                                                                            m->nv * dim_sensor), this->DsDa[t], mjDsDa);
                                         break;
@@ -331,7 +344,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->u_dtheta, this->u_dell,
                                                                     this->u_max_wasp_iters,
-                                                                    DataAt(this->D, t * (dim_sensor * dim_action)),
+                                                                    DataAt(this->DT, t * (dim_sensor * dim_action)),
                                                                     this->DsDu[t], mjDsDu);
                                         break;
                                 }
@@ -369,7 +382,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->q_dtheta, this->q_dell,
                                                                     this->q_max_wasp_iters,
-                                                                    DataAt(this->C,
+                                                                    DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative)),
                                                                     this->DsDq[t], mjDsDq);
                                         break;
@@ -378,7 +391,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->v_dtheta, this->v_dell,
                                                                     this->v_max_wasp_iters,
-                                                                    DataAt(this->C,
+                                                                    DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative) + m->
                                                                            nv * dim_sensor), this->DsDv[t], mjDsDv);
                                         break;
@@ -387,7 +400,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->u_dtheta, this->u_dell,
                                                                     this->u_max_wasp_iters,
-                                                                    DataAt(this->D, t * (dim_sensor * dim_action)),
+                                                                    DataAt(this->DT, t * (dim_sensor * dim_action)),
                                                                     this->DsDu[t], mjDsDu);
                                         break;
                                     // DyDx
@@ -401,7 +414,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->q_dtheta, this->q_dell,
                                                                     this->q_max_wasp_iters,
-                                                                    DataAt(this->A,
+                                                                    DataAt(this->AT,
                                                                            t * (dim_state_derivative *
                                                                                dim_state_derivative)), this->DyDq[t],
                                                                     mjDyDq);
@@ -411,7 +424,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->v_dtheta, this->v_dell,
                                                                     this->v_max_wasp_iters,
-                                                                    DataAt(this->A,
+                                                                    DataAt(this->AT,
                                                                            t * (dim_state_derivative *
                                                                                dim_state_derivative) + m->nv *
                                                                            dim_state_derivative), this->DyDv[t],
@@ -422,7 +435,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->u_dtheta, this->u_dell,
                                                                     this->u_max_wasp_iters,
-                                                                    DataAt(this->B,
+                                                                    DataAt(this->BT,
                                                                            t * (dim_state_derivative * dim_action)),
                                                                     this->DyDu[t], mjDyDu);
                                         break;
@@ -431,7 +444,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->q_dtheta, this->q_dell,
                                                                     this->q_max_wasp_iters,
-                                                                    DataAt(this->C,
+                                                                    DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative)),
                                                                     this->DsDq[t], mjDsDq);
                                         break;
@@ -440,7 +453,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->v_dtheta, this->v_dell,
                                                                     this->v_max_wasp_iters,
-                                                                    DataAt(this->C,
+                                                                    DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative) + m->
                                                                            nv * dim_sensor), this->DsDv[t], mjDsDv);
                                         break;
@@ -449,7 +462,7 @@ namespace mjpc {
                                         mjd_transitionWASPOneThread(m, d, tol, mode,
                                                                     this->u_dtheta, this->u_dell,
                                                                     this->u_max_wasp_iters,
-                                                                    DataAt(this->D, t * (dim_sensor * dim_action)),
+                                                                    DataAt(this->DT, t * (dim_sensor * dim_action)),
                                                                     this->DsDu[t], mjDsDu);
                                         break;
                                 }
@@ -459,5 +472,23 @@ namespace mjpc {
             pool.WaitCount(count_before + evaluate_.size() * 6);
             pool.ResetCount();
         }
+        int count_before = pool.GetCount();
+        for (int t: evaluate_) {
+            pool.Schedule([this, // access A,B,C,D, Dy*, Ds*, q_*, v_*, a_*, u_*...
+                         dim_state_derivative, dim_action, dim_sensor,
+                      t]() // copy small scalars
+            {
+                mju_transpose(DataAt(this->A, t*dim_state_derivative*dim_state_derivative), DataAt(this->AT, t*dim_state_derivative*dim_state_derivative),
+                             dim_state_derivative, dim_state_derivative);
+                mju_transpose(DataAt(this->B, t*dim_action*dim_state_derivative), DataAt(this->BT, t*dim_action*dim_state_derivative),
+                       dim_action, dim_state_derivative);
+                mju_transpose(DataAt(this->C, t*dim_state_derivative*dim_sensor), DataAt(this->CT, t*dim_state_derivative*dim_sensor),
+                       dim_state_derivative, dim_sensor);
+                mju_transpose(DataAt(this->D, t*dim_action*dim_sensor), DataAt(this->DT, t*dim_action*dim_sensor),
+                       dim_action, dim_sensor);
+            });
+        }
+        pool.WaitCount(count_before + evaluate_.size());
+        pool.ResetCount();
     }
 }

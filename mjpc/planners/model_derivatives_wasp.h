@@ -98,7 +98,8 @@ namespace mjpc {
             double tol,
             int mode,
             ThreadPool &pool);
-    boost::circular_buffer<mjWASPCache*> DyDq, DyDv, DyDa;//   std::vector<mjWASPCache*> DyDq, DyDv, DyDa;
+
+            boost::circular_buffer<mjWASPCache*> DyDq, DyDv, DyDa;//   std::vector<mjWASPCache*> DyDq, DyDv, DyDa;
      boost::circular_buffer<mjWASPCache*>   DyDu; //  std::vector<mjWASPCache*> DyDu;
        boost::circular_buffer<mjWASPCache*> DsDq, DsDv, DsDa;// std::vector<mjWASPCache*> DsDq, DsDv, DsDa;
         boost::circular_buffer<mjWASPCache*>   DsDu; // std::vector<mjWASPCache*> DsDu;
@@ -109,14 +110,16 @@ namespace mjpc {
         // tuned interactively in planners' GUI
         friend class GradientPlanner;
         friend class iLQGPlanner;
-        double q_dtheta=1e-10, q_dell=1e-10;
-        double v_dtheta=1e-10, v_dell=1e-10;
-        double a_dtheta=1e-10, a_dell=1e-10;
-        double u_dtheta=1e-10, u_dell=1e-10;
+        double q_dtheta=1e-6, q_dell=1e-6;
+        double v_dtheta=1e-6, v_dell=1e-6;
+        double a_dtheta=1e-6, a_dell=1e-6;
+        double u_dtheta=1e-6, u_dell=1e-6;
         int q_max_wasp_iters=1;
         int v_max_wasp_iters=1;
         int a_max_wasp_iters=1;
         int u_max_wasp_iters=1;
+
+        std::vector<double> AT, BT, CT, DT;
     };
 }
 

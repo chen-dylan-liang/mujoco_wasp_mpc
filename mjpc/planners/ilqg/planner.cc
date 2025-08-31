@@ -447,9 +447,8 @@ namespace mjpc {
                 //model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
             } else if (md_engine == WASP) {
                 model_derivative = &wasp_md;
-                wasp_md.RolloutCache(horizon, model->nv, model->na, model->nu, 2*model->nv+model->na, model->nsensordata);
+                //wasp_md.RolloutCache(delta_time/model->opt.timestep, model->nv, model->na, model->nu, 2*model->nv+model->na, model->nsensordata);
                // wasp_md.needs_reset_cache=true;
-                //model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
             }
         // start timer
         auto model_derivative_start = std::chrono::steady_clock::now();
@@ -598,7 +597,6 @@ namespace mjpc {
 
         // ----- rollout policy ----- //
         auto rollouts_start = std::chrono::steady_clock::now();
-
         // copy policy
         for (int j = 1; j < num_trajectory_; j++) {
             candidate_policy[j].CopyFrom(candidate_policy[0], horizon);
@@ -627,6 +625,60 @@ namespace mjpc {
                    (backward_pass.dV[0] + action_step * backward_pass.dV[1]) +
                    1.0e-16;
         improvement = previous_return - trajectory[winner].total_return;
+        // update error thresholds
+        if (previous_return>1e-6) {
+            if (improvement < 1e-6) {
+                wasp_md.q_dtheta *=0.5;
+                wasp_md.q_dell*=0.5;
+                wasp_md.v_dtheta *=0.5;
+                wasp_md.v_dell *=0.5;
+                wasp_md.u_dtheta *=0.5;
+                wasp_md.u_dell *=0.5;
+                wasp_md.a_dtheta *=0.5;
+                wasp_md.a_dell *=0.5;
+            }
+            else{
+                double ratio =previous_return /  trajectory[winner].total_return;
+                double gamma = 1.2;
+                wasp_md.q_dtheta *= gamma*pow(ratio,2.5);
+                wasp_md.q_dell *= gamma*pow(ratio,2.5);
+                wasp_md.v_dtheta *= gamma*pow(ratio,2.5);
+                wasp_md.v_dell *= gamma*pow(ratio,2.5);
+                wasp_md.u_dtheta *=gamma*pow(ratio,2.5);
+                wasp_md.u_dell *= gamma*pow(ratio,2.5);
+                wasp_md.a_dtheta *= gamma*pow(ratio,2.5);
+                wasp_md.a_dell *= gamma*pow(ratio,2.5);
+                wasp_md.q_dtheta = std::min(0.5, wasp_md.q_dtheta);
+                wasp_md.q_dell = std::min(0.5, wasp_md.q_dtheta);
+                wasp_md.v_dtheta = std::min(0.5, wasp_md.q_dtheta);
+                wasp_md.v_dell = std::min(0.5, wasp_md.q_dtheta);
+                wasp_md.u_dtheta = std::min(0.5, wasp_md.q_dtheta);
+                wasp_md.u_dell = std::min(0.5, wasp_md.q_dtheta);
+                wasp_md.a_dtheta = std::min(0.5, wasp_md.q_dtheta);
+                wasp_md.a_dell = std::min(0.5, wasp_md.q_dtheta);
+                /*
+                double ratio = 1 - trajectory[winner].total_return/previous_return;
+                double beta = 1.01;
+                wasp_md.q_dtheta *= exp(beta*ratio);
+                wasp_md.q_dell *= exp(beta*ratio);
+                wasp_md.v_dtheta *= exp(beta*ratio);
+                wasp_md.v_dell *= exp(beta*ratio);
+                wasp_md.u_dtheta *= exp(beta*ratio);
+                wasp_md.u_dell *= exp(beta*ratio);
+                wasp_md.a_dtheta *=exp(beta*ratio);
+                wasp_md.a_dell *= exp(beta*ratio);
+                wasp_md.q_dtheta = std::min(0.4, wasp_md.q_dtheta);
+                wasp_md.q_dell = std::min(0.4, wasp_md.q_dtheta);
+                wasp_md.v_dtheta = std::min(0.4, wasp_md.q_dtheta);
+                wasp_md.v_dell = std::min(0.4, wasp_md.q_dtheta);
+                wasp_md.u_dtheta = std::min(0.4, wasp_md.q_dtheta);
+                wasp_md.u_dell = std::min(0.4, wasp_md.q_dtheta);
+                wasp_md.a_dtheta = std::min(0.4, wasp_md.q_dtheta);
+                wasp_md.a_dell = std::min(0.4, wasp_md.q_dtheta);*/
+
+            }
+        }
+
         surprise = mju_min(mju_max(0, improvement / expected), 2);
 
         // update regularization

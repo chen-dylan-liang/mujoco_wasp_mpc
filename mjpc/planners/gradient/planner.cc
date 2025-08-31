@@ -213,9 +213,8 @@ namespace mjpc {
       //model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
     } else if (md_engine == WASP) {
       model_derivative = &wasp_md;
-      wasp_md.RolloutCache(delta_time/model->opt.timestep+1, model->nv, model->na, model->nu, 2*model->nv+model->na, model->nsensordata);
+      //wasp_md.RolloutCache(delta_time/model->opt.timestep+1, model->nv, model->na, model->nu, 2*model->nv+model->na, model->nsensordata);
       //wasp_md.needs_reset_cache=true;
-      //model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
     }
     for (int i = 0; i < settings.max_rollout; i++) {
       // ----- model derivatives ----- //

@@ -56,7 +56,7 @@ set(MUJOCO_BUILD_TESTS OFF)
 set(MUJOCO_TEST_PYTHON_UTIL OFF)
 
 set(MUJOCO_MPC_MUJOCO_GIT_TAG
-        "1.2.0.wasp" #088079eff0450e32b98ee743141780ed68307506
+        "1.3.0.wasp" #088079eff0450e32b98ee743141780ed68307506
     CACHE STRING "Git revision for (Wasp-Differentiated-)MuJoCo."
 )
 
