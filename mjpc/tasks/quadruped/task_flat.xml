@@ -8,6 +8,7 @@
     <text name="task_transition" data="Quadruped|Biped|Walk|Scramble|Flip" />
     <numeric name="agent_planner" data="2 " />
     <numeric name="agent_horizon" data="0.35" />
+    <numeric name="max_planning_iterations" data="50" />
     <numeric name="agent_timestep" data="0.01" />
     <numeric name="sampling_spline_points" data="3" />
     <numeric name="sampling_trajectories" data="60"/>

@@ -469,6 +469,7 @@ void MjpcApp::Start() {
   printf("    planning     :  %i\n", sim->agent->planner_threads());
   printf("  Estimator      :  %i\n", sim->agent->estimator_threads());
   printf("    estimation   :  %i\n", sim->agent->estimator_enabled);
+  printf("    planning steps   :  %i\n", sim->agent->max_plan_iters);
 
   // set control callback
   mjcb_control = controller;

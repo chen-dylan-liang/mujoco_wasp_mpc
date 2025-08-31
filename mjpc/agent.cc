@@ -41,6 +41,7 @@
 #include "mjpc/threadpool.h"
 #include "mjpc/trajectory.h"
 #include "mjpc/utilities.h"
+#include "_deps/spdlog_lib-src/include/spdlog/fmt/bundled/color.h"
 
 namespace mjpc {
 namespace mju = ::mujoco::util_mjpc;
@@ -103,8 +104,9 @@ void Agent::Initialize(const mjModel* model) {
   // time step
   timestep_ = GetNumberOrDefault(1.0e-2, model, "agent_timestep");
 
-  // planning steps
+  // planning steps (horizon)
   steps_ = mju_max(mju_min(horizon_ / timestep_ + 1, kMaxTrajectoryHorizon), 1);
+  max_plan_iters = GetNumberOrDefault(100, model, "max_planning_iterations");
 
   active_task_id_ = gui_task_id;
   ActiveTask()->Reset(model);
@@ -367,6 +369,7 @@ void Agent::Plan(std::atomic<bool>& exitrequest,
     if (model_ && uiloadrequest.load() == 0) {
       PlanIteration(&pool);
     }
+    if (count_ >= max_plan_iters)  exitrequest.store(true);
   }  // exitrequest sent -- stop planning
 }
 

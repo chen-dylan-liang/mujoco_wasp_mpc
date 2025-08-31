@@ -186,6 +186,7 @@ class Agent {
   std::vector<double> ctrl;
   bool reset_estimator = true;
   bool estimator_enabled = false;
+  int max_plan_iters = 100;
 
  private:
   // model
