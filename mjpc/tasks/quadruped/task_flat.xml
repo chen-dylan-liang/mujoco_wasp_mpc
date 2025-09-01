@@ -8,12 +8,13 @@
     <text name="task_transition" data="Quadruped|Biped|Walk|Scramble|Flip" />
     <numeric name="agent_planner" data="2 " />
     <numeric name="agent_horizon" data="0.35" />
-    <numeric name="max_planning_iterations" data="50" />
+    <numeric name="max_planning_iterations" data="-1" />
     <numeric name="agent_timestep" data="0.01" />
     <numeric name="sampling_spline_points" data="3" />
     <numeric name="sampling_trajectories" data="60"/>
     <numeric name="sampling_exploration" data="0.04" />
     <numeric name="gradient_spline_points" data="5" />
+    <numeric name="log_planning_data" data="0" />
 
     <!-- residual -->
     <numeric name="residual_select_Gait" data="0"/>

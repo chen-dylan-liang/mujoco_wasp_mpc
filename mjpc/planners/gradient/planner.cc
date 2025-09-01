@@ -228,6 +228,7 @@ namespace mjpc {
         dim_sensor, horizon, settings.fd_tolerance, settings.fd_mode, pool,
         skip);
 
+
       // stop timer
       model_derivative_time += GetDuration(model_derivative_start);
 
@@ -518,14 +519,10 @@ namespace mjpc {
       {mjITEM_SLIDERINT, "Deriv. Skip", 2, &derivative_skip_, "0 16"},
       {mjITEM_SELECT, "MD Engine", 2, &md_engine, "FD\nWASP\n"},
       wasp_iter_q, wasp_iter_v, wasp_iter_a, wasp_iter_u,
-{mjITEM_SLIDERNUM, "WASP q_dtheta", 2, &(wasp_md.q_dtheta), "0 1"},
-{mjITEM_SLIDERNUM, "WASP q_ell", 2, &(wasp_md.q_dell), "0 1"},
-      {mjITEM_SLIDERNUM, "WASP v_dtheta", 2, &(wasp_md.v_dtheta), "0 1"},
-{mjITEM_SLIDERNUM, "WASP v_ell", 2, &(wasp_md.v_dell), "0 1"},
-      {mjITEM_SLIDERNUM, "WASP a_dtheta", 2, &(wasp_md.a_dtheta), "0 1"},
-{mjITEM_SLIDERNUM, "WASP a_ell", 2, &(wasp_md.a_dell), "0 1"},
-      {mjITEM_SLIDERNUM, "WASP u_dtheta", 2, &(wasp_md.u_dtheta), "0 1"},
-{mjITEM_SLIDERNUM, "WASP u_ell", 2, &(wasp_md.u_dell), "0 1"},
+{mjITEM_SLIDERNUM, "WASP x_eps", 2, &(wasp_md.x_eps), "0 1"},
+            {mjITEM_SLIDERNUM, "WASP u_eps", 2, &(wasp_md.u_eps), "0 1"},
+{mjITEM_SELECT, "rollout wasp cache", 2, &(wasp_md.cache_rollout), "0 1"},
+{mjITEM_SELECT, "heuristic wasp eps", 2, &(wasp_md.heuristic_mode), "0 1"},
       {mjITEM_END}
     };
 

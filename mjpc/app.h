@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <vector>
+#include <fstream>
 
 #include "mjpc/simulate.h"  // mjpc fork
 #include "mjpc/task.h"

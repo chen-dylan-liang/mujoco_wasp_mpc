@@ -16,7 +16,7 @@
 #define MJPC_PLANNERS_PLANNER_H_
 
 #include <mujoco/mujoco.h>
-
+#include <fstream>
 #include "mjpc/states/state.h"
 #include "mjpc/task.h"
 #include "mjpc/threadpool.h"
@@ -77,6 +77,11 @@ class Planner {
 
   std::vector<UniqueMjData> data_;
   void ResizeMjData(const mjModel* model, int num_threads);
+
+  int log=0;
+
+  std::ofstream log_file;
+
 };
 
 // additional optional interface for planners that can produce several policy

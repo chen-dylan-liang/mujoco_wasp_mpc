@@ -87,6 +87,8 @@ void Agent::Initialize(const mjModel* model) {
     mju_error("Ctrl limits required for all actuators.\n");
   }
 
+  // log
+  log_planning_data = GetNumberOrDefault(0, model, "log_planning_data");
   // planner
   planner_ = GetNumberOrDefault(0, model, "agent_planner");
 
@@ -106,7 +108,8 @@ void Agent::Initialize(const mjModel* model) {
 
   // planning steps (horizon)
   steps_ = mju_max(mju_min(horizon_ / timestep_ + 1, kMaxTrajectoryHorizon), 1);
-  max_plan_iters = GetNumberOrDefault(100, model, "max_planning_iterations");
+  max_plan_iters = GetNumberOrDefault(-1, model, "max_planning_iterations");
+
 
   active_task_id_ = gui_task_id;
   ActiveTask()->Reset(model);
@@ -369,7 +372,10 @@ void Agent::Plan(std::atomic<bool>& exitrequest,
     if (model_ && uiloadrequest.load() == 0) {
       PlanIteration(&pool);
     }
-    if (count_ >= max_plan_iters)  exitrequest.store(true);
+    if (max_plan_iters>0 && count_ >= max_plan_iters) {
+      ActivePlanner().log_file.close();
+      exitrequest.store(true);
+    }
   }  // exitrequest sent -- stop planning
 }
 

@@ -60,7 +60,6 @@ int Gradient::GradientStep(int n, int m, const double *Wx, const double *At,
 
   // dV = dV + [du'*Qu]
   dV[0] += mju_dot(dut, Qut, m);
-
   return 1;
 }
 
@@ -75,6 +74,7 @@ int Gradient::Compute(GradientPolicy *p, const ModelDerivatives *md,
   mju_copy(DataAt(Vx, (T - 1) * dim_state_derivative),
            DataAt(cd->cx, (T - 1) * dim_state_derivative),
            dim_state_derivative);
+
 
   // // iterate gradient steps backward in time
   int time_index = T - 1;

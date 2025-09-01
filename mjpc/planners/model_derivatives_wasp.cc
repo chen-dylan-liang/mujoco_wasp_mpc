@@ -15,6 +15,16 @@ namespace mjpc {
     void ModelDerivativesWASP::Allocate(int dim_state_derivative, int dim_action, int dim_sensor,
                                         int T) {
         ModelDerivatives::Allocate(dim_state_derivative, dim_action, dim_sensor, T);
+        DyDq.resize(T);
+        DyDv.resize(T);
+        DyDa.resize(T);
+        DyDa.resize(T);
+        DyDu.resize(T);
+        DsDq.resize(T);
+        DsDv.resize(T);
+        DsDa.resize(T);
+        DsDa.resize(T);
+        DsDu.resize(T);
         if (all_in_parallel) {
             AT.resize(dim_state_derivative * dim_state_derivative * T);
             BT.resize(dim_state_derivative * dim_action * T);
@@ -36,43 +46,55 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
         needs_reset_cache = true;
     }
 
-    void ModelDerivativesWASP::RolloutCache(int n, int dim_v, int dim_a, int dim_u, int dim_y, int dim_s) {
-        if (!needs_allocate_cache && !needs_reset_cache) {
-            // zero out the caches expired
-            for (int i = 0; i < n; i++) {
-                mj_zeroWASPCache(DyDq[i], dim_v, dim_y);
-                mj_zeroWASPCache(DyDv[i], dim_v, dim_y);
-                if (!DyDa.empty()) mj_zeroWASPCache(DyDa[i], dim_a, dim_y);
-                mj_zeroWASPCache(DyDu[i], dim_u, dim_y);
-                mj_zeroWASPCache(DsDq[i], dim_v, dim_s);
-                mj_zeroWASPCache(DsDv[i], dim_v, dim_s);
-                if (!DsDa.empty()) mj_zeroWASPCache(DsDa[i], dim_a, dim_s);
-                mj_zeroWASPCache(DsDu[i], dim_u, dim_s);
-            }
+    void ModelDerivativesWASP::RolloutCache(const mjModel* m, int n) {
+        if (!needs_allocate_cache && !needs_reset_cache && cache_rollout) {
             // go forward n steps
-            for (int i = 0; i < n; i++) {
-                DyDq.push_back(DyDq.front());
-                DyDv.push_back(DyDv.front());
-                if (!DyDa.empty())DyDa.push_back(DyDa.front());
-                DyDu.push_back(DyDu.front());
-                DsDq.push_back(DsDq.front());
-                DsDv.push_back(DsDv.front());
-                if (!DsDa.empty()) DsDa.push_back(DsDa.front());
-                DsDu.push_back(DsDu.front());
+            for (int i = 0; i < n; i++)
+                if (i+n < DyDq.size()){
+                mj_copyWASPCache(DyDq[i],DyDq[i+n], m->nv, 2*m->nv+m->na);
+                     mj_copyWASPCache(DyDv[i],DyDv[i+n], m->nv, 2*m->nv+m->na);
+                    if (!DyDa.empty()) mj_copyWASPCache(DyDa[i],DyDa[i+n], m->na, 2*m->nv+m->na);
+                     mj_copyWASPCache(DyDu[i],DyDu[i+n],m->nu, 2*m->nv+m->na);
+                     mj_copyWASPCache(DsDq[i],DsDq[i+n], m->nv, m->nsensordata);
+                     mj_copyWASPCache(DsDv[i],DsDv[i+n], m->nv, m->nsensordata);
+                    if (!DsDa.empty()) mj_copyWASPCache(DsDa[i],DsDa[i+n], m->na, m->nsensordata);
+                     mj_copyWASPCache(DsDu[i],DsDu[i+n],m->nu, m->nsensordata);
             }
         }
     }
-
-    void ModelDerivativesWASP::Compute(const mjModel *m, const std::vector<UniqueMjData> &data, const double *x,
-                                       const double *u, const double *h, int dim_state, int dim_state_derivative,
-                                       int dim_action, int dim_sensor, int T, double tol, int mode, ThreadPool &pool,
-                                       int skip) {
-        // allocate or reset wasp caches
-        // note here in "na" a stands for "activation" (not "action"), a part of the state vector.
-        // nu == dim_action
-        int nv = m->nv, na = m->na, nu = m->nu;
+    void ModelDerivativesWASP::AllocateWASPData(const mjModel *m, int T) {
         if (needs_allocate_cache) {
+            int nv = m->nv, na = m->na, nu = m->nu;
+            int dim_state_derivative=2*nv+na, dim_sensor=m->nsensordata;
             // clear
+            mj_deleteWASPBasis(qv_basis);
+            qv_basis=nullptr;
+            mj_deleteWASPBasis(a_basis);
+            a_basis=nullptr;
+            mj_deleteWASPBasis(u_basis);
+            u_basis=nullptr;
+            for (int t=0; t < DyDq.size(); ++t) {
+                mj_deleteWASPCache(DyDq[t]);
+                DyDq[t]=nullptr;
+                mj_deleteWASPCache(DyDv[t]);
+                DyDv[t]=nullptr;
+                if (DyDa.size()) {
+                    mj_deleteWASPCache(DyDa[t]);
+                    DyDa[t]=nullptr;
+                }
+                   mj_deleteWASPCache(DyDu[t]);
+                DyDu[t]=nullptr;
+                mj_deleteWASPCache(DsDq[t]);
+                DsDq[t]=nullptr;
+                mj_deleteWASPCache(DsDv[t]);
+                DsDv[t]=nullptr;
+                if (DsDa.size()) {
+                    mj_deleteWASPCache(DsDa[t]);
+                    DsDa[t]=nullptr;
+                }
+                mj_deleteWASPCache(DsDu[t]);
+                DsDu[t]=nullptr;
+            }
             DyDq.clear();
             DyDv.clear();
             DyDa.clear();
@@ -81,34 +103,41 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
             DsDv.clear();
             DsDa.clear();
             DsDu.clear();
-            // reset capacity and re-push
-            DyDq.set_capacity(T);
-            DyDv.set_capacity(T);
-            if (m->na > 0) DyDa.set_capacity(T);
-            else DyDa.set_capacity(0);
-            DyDu.set_capacity(T);
-            DsDq.set_capacity(T);
-            DsDv.set_capacity(T);
-            if (m->na > 0) DsDa.set_capacity(T);
-            else DsDa.set_capacity(0);
-            DsDu.set_capacity(T);
+            // reset
+            qv_basis=mj_newWASPBasis(nv, use_wasp_identity_basis);
+            u_basis=mj_newWASPBasis(nu, use_wasp_identity_basis);
+            if (m->na>0) a_basis=mj_newWASPBasis(na, use_wasp_identity_basis);
             for (int t = 0; t < T; ++t) {
-                DyDq.push_back(mj_newWASPCache(nv, dim_state_derivative, 1, use_wasp_identity_basis));
-                DyDv.push_back(mj_newWASPCache(nv, dim_state_derivative, 1, use_wasp_identity_basis));
-                if (m->na > 0) DyDa.push_back(mj_newWASPCache(na, dim_state_derivative, 1, use_wasp_identity_basis));
-                DyDu.push_back(mj_newWASPCache(nu, dim_state_derivative, 1, use_wasp_identity_basis));
+                DyDq.push_back(mj_newWASPCache(nv, dim_state_derivative));
+                DyDq[t]->i = t%nv;
+                DyDv.push_back(mj_newWASPCache(nv, dim_state_derivative));
+                DyDv[t]->i = t%nv;
+                if (m->na > 0) {
+                    DyDa.push_back(mj_newWASPCache(na, dim_state_derivative));
+                    DyDa[t]->i = t%na;
+                }
+                DyDu.push_back(mj_newWASPCache(nu, dim_state_derivative));
+                DyDu[t]->i = t%nu;
                 // Ds caches use the same bases as these of Dy caches
-                DsDq.push_back(mj_newWASPCache(nv, dim_sensor, 0, use_wasp_identity_basis));
-                DsDv.push_back(mj_newWASPCache(nv, dim_sensor, 0, use_wasp_identity_basis));
-                if (m->na > 0) DsDa.push_back(mj_newWASPCache(na, dim_sensor, 0, use_wasp_identity_basis));
-                DsDu.push_back(mj_newWASPCache(nu, dim_sensor, 0, use_wasp_identity_basis));
-                mj_copyWASPCacheBasis(DsDq[t], DyDq[t], nv);
-                mj_copyWASPCacheBasis(DsDv[t], DyDv[t], nv);
-                if (m->na > 0) mj_copyWASPCacheBasis(DsDa[t], DyDa[t], na);
-                mj_copyWASPCacheBasis(DsDu[t], DyDu[t], nu);
+                DsDq.push_back(mj_newWASPCache(nv, dim_sensor));
+                DsDq[t]->i = t%nv;
+                DsDv.push_back(mj_newWASPCache(nv, dim_sensor));
+                DsDv[t]->i = t%nv;
+                if (m->na > 0) {
+                    DsDa.push_back(mj_newWASPCache(na, dim_sensor));
+                    DsDa[t]->i = t%na;
+                }
+                DsDu.push_back(mj_newWASPCache(nu, dim_sensor));
+                DsDu[t]->i = t%nu;
             }
             needs_allocate_cache = false;
-        } else if (needs_reset_cache) {
+        }
+    }
+
+    void ModelDerivativesWASP::ResetWASPData(const mjModel *m, int T) {
+        if (needs_reset_cache) {
+            int nv = m->nv, na = m->na, nu = m->nu;
+            int dim_state_derivative=2*nv+na, dim_sensor=m->nsensordata;
             for (int t = 0; t < T; ++t) {
                 mj_zeroWASPCache(DyDq[t], nv, dim_state_derivative);
                 mj_zeroWASPCache(DyDv[t], nv, dim_state_derivative);
@@ -121,6 +150,14 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
             }
             needs_reset_cache = false;
         }
+    }
+
+    void ModelDerivativesWASP::Compute(const mjModel *m, const std::vector<UniqueMjData> &data, const double *x,
+                                       const double *u, const double *h, int dim_state, int dim_state_derivative,
+                                       int dim_action, int dim_sensor, int T, double tol, int mode, ThreadPool &pool,
+                                       int skip) {
+        AllocateWASPData(m,T);
+        ResetWASPData(m,T);
         ModelDerivatives::Compute(m, data, x, u, h, dim_state, dim_state_derivative, dim_action, dim_sensor, T, tol,
                                   mode, pool, skip);
     }
@@ -131,6 +168,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
         const double *x, const double *u, const double *h,
         int dim_state, int dim_state_derivative, int dim_action, int dim_sensor,
         int T, double tol, int mode, ThreadPool &pool) {
+        num_dynamics_called=0;
         if (!all_in_parallel)
             ParaTDerivEval(m, data, x, u, h, dim_state, dim_state_derivative, dim_action, dim_sensor,
                            T, tol, mode, pool);
@@ -164,14 +202,15 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
 
                     // set action
                     mju_copy(d->ctrl, u + t * dim_action, dim_action);
-
+                    int cnt=0;
                     if (t == T - 1) {
-                        mjd_transitionWASP(
-                            m, d, tol, mode,
-                            this->q_dtheta, this->q_dell, this->q_max_wasp_iters,
-                            this->v_dtheta, this->v_dell, this->v_max_wasp_iters,
-                            this->a_dtheta, this->a_dell, this->a_max_wasp_iters,
-                            this->u_dtheta, this->u_dell, this->u_max_wasp_iters,
+                        cnt = mjd_transitionWASP(
+                            m, this->qv_basis, this->qv_basis, this->a_basis,nullptr,
+                            d, tol, mode,
+                            this->x_eps, this->x_eps, this->q_max_wasp_iters,
+                            this->x_eps, this->x_eps, this->v_max_wasp_iters,
+                            this->x_eps, this->x_eps, this->a_max_wasp_iters,
+                            this->u_eps, this->u_eps, this->u_max_wasp_iters,
                             /*A*/ nullptr,
                             /*B*/ nullptr,
                             /*C*/ DataAt(this->C, t * (dim_sensor * dim_state_derivative)),
@@ -179,12 +218,13 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                             /*DyDq..DyDu*/ nullptr, nullptr, nullptr, nullptr,
                             /*DsDq..DsDu*/ this->DsDq[t], this->DsDv[t], m->na > 0 ? this->DsDa[t] : nullptr, nullptr);
                     } else {
-                        mjd_transitionWASP(
-                            m, d, tol, mode,
-                            this->q_dtheta, this->q_dell, this->q_max_wasp_iters,
-                            this->v_dtheta, this->v_dell, this->v_max_wasp_iters,
-                            this->a_dtheta, this->a_dell, this->a_max_wasp_iters,
-                            this->u_dtheta, this->u_dell, this->u_max_wasp_iters,
+                         cnt= mjd_transitionWASP(
+                            m, this->qv_basis, this->qv_basis, this->a_basis,this->u_basis,
+                            d, tol, mode,
+                            this->x_eps, this->x_eps, this->q_max_wasp_iters,
+                            this->x_eps, this->x_eps, this->v_max_wasp_iters,
+                            this->x_eps, this->x_eps, this->a_max_wasp_iters,
+                            this->u_eps, this->u_eps, this->u_max_wasp_iters,
                             /*A*/ DataAt(this->A, t * (dim_state_derivative * dim_state_derivative)),
                             /*B*/ DataAt(this->B, t * (dim_state_derivative * dim_action)),
                             /*C*/ DataAt(this->C, t * (dim_sensor * dim_state_derivative)),
@@ -194,6 +234,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                             /*DsDq..DsDu*/ this->DsDq[t], this->DsDv[t], m->na > 0 ? this->DsDa[t] : nullptr,
                             this->DsDu[t]);
                     }
+                    num_dynamics_called+=cnt;
                 });
         }
         pool.WaitCount(count_before + evaluate_.size());
@@ -212,7 +253,6 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                 for (int type = 0; type < 8; ++type) {
                     // Stable pointer to the vector; avoids copying and avoids dangling ref-to-param.
                     auto data_ptr = &data;
-
                     pool.Schedule([this, // access A,B,C,D, Dy*, Ds*, q_*, v_*, a_*, u_*...
                             m, // copy pointer
                             data_ptr, // copy pointer to vector
@@ -227,13 +267,13 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
 
                             // set action
                             mju_copy(d->ctrl, u + t * dim_action, dim_action);
-
+                            int cnt=0;
                             if (t == T - 1) {
                                 switch (type) {
                                     // DsDq
                                     case 4:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->q_dtheta, this->q_dell,
+                                         cnt=mjd_transitionWASPOneThread(m, this->qv_basis, d, tol, mode,
+                                                                    this->x_eps, this->x_eps,
                                                                     this->q_max_wasp_iters,
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative)),
@@ -241,8 +281,8 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                         break;
                                     // DsDv
                                     case 5:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->v_dtheta, this->v_dell,
+                                         cnt=mjd_transitionWASPOneThread(m, this->qv_basis, d, tol, mode,
+                                                                    this->x_eps, this->x_eps,
                                                                     this->v_max_wasp_iters,
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative) + m->
@@ -250,8 +290,8 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                         break;
                                     // DsDa
                                     case 6:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->a_dtheta, this->a_dell,
+                                         cnt=mjd_transitionWASPOneThread(m, this->a_basis, d, tol, mode,
+                                                                    this->x_eps, this->x_eps,
                                                                     this->a_max_wasp_iters,
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative) + 2 *
@@ -259,8 +299,8 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                         break;
                                     // DsDu
                                     case 7:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->u_dtheta, this->u_dell,
+                                        cnt= mjd_transitionWASPOneThread(m, this->u_basis, d, tol, mode,
+                                                                    this->u_eps, this->u_eps,
                                                                     this->u_max_wasp_iters,
                                                                     DataAt(this->DT, t * (dim_sensor * dim_action)),
                                                                     this->DsDu[t], mjDsDu);
@@ -273,8 +313,8 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                 switch (type) {
                                     // DyDq
                                     case 0:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->q_dtheta, this->q_dell,
+                                        cnt= mjd_transitionWASPOneThread(m, this->qv_basis, d, tol, mode,
+                                                                    this->x_eps, this->x_eps,
                                                                     this->q_max_wasp_iters,
                                                                     DataAt(this->AT,
                                                                            t * (dim_state_derivative *
@@ -283,8 +323,8 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                         break;
                                     // DyDv
                                     case 1:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->v_dtheta, this->v_dell,
+                                        cnt= mjd_transitionWASPOneThread(m, this->qv_basis, d, tol, mode,
+                                                                    this->x_eps, this->x_eps,
                                                                     this->v_max_wasp_iters,
                                                                     DataAt(this->AT,
                                                                            t * (dim_state_derivative *
@@ -294,8 +334,8 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                         break;
                                     // DyDa
                                     case 2:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->a_dtheta, this->a_dell,
+                                        cnt= mjd_transitionWASPOneThread(m, this->a_basis, d, tol, mode,
+                                                                    this->x_eps, this->x_eps,
                                                                     this->a_max_wasp_iters,
                                                                     DataAt(this->AT,
                                                                            t * (dim_state_derivative *
@@ -305,8 +345,8 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                         break;
                                     // DyDu
                                     case 3:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->u_dtheta, this->u_dell,
+                                        cnt= mjd_transitionWASPOneThread(m,this->u_basis, d, tol, mode,
+                                                                    this->u_eps, this->u_eps,
                                                                     this->u_max_wasp_iters,
                                                                     DataAt(this->BT,
                                                                            t * (dim_state_derivative * dim_action)),
@@ -314,8 +354,8 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                         break;
                                     // DsDq
                                     case 4:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->q_dtheta, this->q_dell,
+                                        cnt= mjd_transitionWASPOneThread(m, this->qv_basis, d, tol, mode,
+                                                                    this->x_eps, this->x_eps,
                                                                     this->q_max_wasp_iters,
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative)),
@@ -323,8 +363,8 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                         break;
                                     // DsDv
                                     case 5:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->v_dtheta, this->v_dell,
+                                        cnt= mjd_transitionWASPOneThread(m,this->qv_basis, d, tol, mode,
+                                                                    this->x_eps, this->x_eps,
                                                                     this->v_max_wasp_iters,
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative) + m->
@@ -332,8 +372,8 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                         break;
                                     // DsDa
                                     case 6:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->a_dtheta, this->a_dell,
+                                        cnt= mjd_transitionWASPOneThread(m,this->a_basis, d, tol, mode,
+                                                                    this->x_eps, this->x_eps,
                                                                     this->a_max_wasp_iters,
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative) + 2 *
@@ -341,14 +381,15 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                         break;
                                     // DsDu
                                     default:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->u_dtheta, this->u_dell,
+                                        cnt= mjd_transitionWASPOneThread(m, this->u_basis, d, tol, mode,
+                                                                    this->u_eps, this->u_eps,
                                                                     this->u_max_wasp_iters,
                                                                     DataAt(this->DT, t * (dim_sensor * dim_action)),
                                                                     this->DsDu[t], mjDsDu);
                                         break;
                                 }
                             }
+                            num_dynamics_called+=cnt;
                         });
                 }
             pool.WaitCount(count_before + evaluate_.size() * 8);
@@ -374,13 +415,13 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
 
                             // set action
                             mju_copy(d->ctrl, u + t * dim_action, dim_action);
-
+                            int cnt=0;
                             if (t == T - 1) {
                                 switch (type) {
                                     // DsDq
                                     case 3:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->q_dtheta, this->q_dell,
+                                        cnt= mjd_transitionWASPOneThread(m, this->qv_basis, d, tol, mode,
+                                                                    this->x_eps, this->x_eps,
                                                                     this->q_max_wasp_iters,
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative)),
@@ -388,8 +429,8 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                         break;
                                     // DsDv
                                     case 4:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->v_dtheta, this->v_dell,
+                                        cnt= mjd_transitionWASPOneThread(m,this->qv_basis, d, tol, mode,
+                                                                    this->x_eps, this->x_eps,
                                                                     this->v_max_wasp_iters,
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative) + m->
@@ -397,8 +438,8 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                         break;
                                     // DsDu
                                     case 5:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->u_dtheta, this->u_dell,
+                                        cnt= mjd_transitionWASPOneThread(m, this->u_basis, d, tol, mode,
+                                                                    this->u_eps, this->u_eps,
                                                                     this->u_max_wasp_iters,
                                                                     DataAt(this->DT, t * (dim_sensor * dim_action)),
                                                                     this->DsDu[t], mjDsDu);
@@ -411,8 +452,8 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                 switch (type) {
                                     // DyDq
                                     case 0:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->q_dtheta, this->q_dell,
+                                        cnt= mjd_transitionWASPOneThread(m,this->qv_basis, d, tol, mode,
+                                                                    this->x_eps, this->x_eps,
                                                                     this->q_max_wasp_iters,
                                                                     DataAt(this->AT,
                                                                            t * (dim_state_derivative *
@@ -421,8 +462,8 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                         break;
                                     // DyDv
                                     case 1:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->v_dtheta, this->v_dell,
+                                        cnt= mjd_transitionWASPOneThread(m,this->qv_basis, d, tol, mode,
+                                                                    this->x_eps, this->x_eps,
                                                                     this->v_max_wasp_iters,
                                                                     DataAt(this->AT,
                                                                            t * (dim_state_derivative *
@@ -432,8 +473,8 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                         break;
                                     // DyDu
                                     case 2:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->u_dtheta, this->u_dell,
+                                        cnt= mjd_transitionWASPOneThread(m, this->u_basis, d, tol, mode,
+                                                                    this->u_eps, this->u_eps,
                                                                     this->u_max_wasp_iters,
                                                                     DataAt(this->BT,
                                                                            t * (dim_state_derivative * dim_action)),
@@ -441,8 +482,8 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                         break;
                                     // DsDq
                                     case 3:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->q_dtheta, this->q_dell,
+                                        cnt= mjd_transitionWASPOneThread(m,this->qv_basis, d, tol, mode,
+                                                                    this->x_eps, this->x_eps,
                                                                     this->q_max_wasp_iters,
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative)),
@@ -450,8 +491,8 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                         break;
                                     // DsDv
                                     case 4:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->v_dtheta, this->v_dell,
+                                        cnt= mjd_transitionWASPOneThread(m, this->qv_basis, d, tol, mode,
+                                                                    this->x_eps, this->x_eps,
                                                                     this->v_max_wasp_iters,
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative) + m->
@@ -459,14 +500,15 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                         break;
                                     // DsDu
                                     default:
-                                        mjd_transitionWASPOneThread(m, d, tol, mode,
-                                                                    this->u_dtheta, this->u_dell,
+                                        cnt= mjd_transitionWASPOneThread(m, this->u_basis, d, tol, mode,
+                                                                    this->u_eps, this->u_eps,
                                                                     this->u_max_wasp_iters,
                                                                     DataAt(this->DT, t * (dim_sensor * dim_action)),
                                                                     this->DsDu[t], mjDsDu);
                                         break;
                                 }
                             }
+                            num_dynamics_called+=cnt;
                         });
                 }
             pool.WaitCount(count_before + evaluate_.size() * 6);

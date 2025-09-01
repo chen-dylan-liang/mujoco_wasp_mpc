@@ -298,14 +298,14 @@ namespace mjpc {
             {mjITEM_CHECKINT, "Terminal Print", 2, &settings.verbose, ""},
             {mjITEM_SELECT, "MD Engine", 2, &md_engine, "FD\nWASP\n"},
             wasp_iter_q, wasp_iter_v, wasp_iter_a, wasp_iter_u,
-            {mjITEM_SLIDERNUM, "WASP q_dtheta", 2, &(wasp_md.q_dtheta), "0 1"},
-{mjITEM_SLIDERNUM, "WASP q_ell", 2, &(wasp_md.q_dell), "0 1"},
-            {mjITEM_SLIDERNUM, "WASP v_dtheta", 2, &(wasp_md.v_dtheta), "0 1"},
-{mjITEM_SLIDERNUM, "WASP v_ell", 2, &(wasp_md.v_dell), "0 1"},
-            {mjITEM_SLIDERNUM, "WASP a_dtheta", 2, &(wasp_md.a_dtheta), "0 1"},
-{mjITEM_SLIDERNUM, "WASP a_ell", 2, &(wasp_md.a_dell), "0 1"},
-            {mjITEM_SLIDERNUM, "WASP u_dtheta", 2, &(wasp_md.u_dtheta), "0 1"},
-{mjITEM_SLIDERNUM, "WASP u_ell", 2, &(wasp_md.u_dell), "0 1"},
+            {mjITEM_SLIDERNUM, "WASP x_eps", 2, &(wasp_md.x_eps), "0 1"},
+            {mjITEM_SLIDERNUM, "WASP u_eps", 2, &(wasp_md.u_eps), "0 1"},
+{mjITEM_SLIDERNUM, "WASP max_x_eps", 2, &(wasp_md.max_x_eps), "0 1"},
+{mjITEM_SLIDERNUM, "WASP max_u_eps", 2, &(wasp_md.max_u_eps), "0 1"},
+{mjITEM_SLIDERNUM, "WASP gamma_eps", 2, &(wasp_md.gamma_eps), "1 2"},
+{mjITEM_SLIDERNUM, "WASP alpha_eps", 2, &(wasp_md.alpha_eps), "1 2"},
+{mjITEM_SELECT, "rollout wasp", 2, &(wasp_md.cache_rollout), "0\n1\n"},
+{mjITEM_SELECT, "heuristic wasp", 2, &(wasp_md.heuristic_mode), "0\n1\n"},
             {mjITEM_END}
         };
 
@@ -447,7 +447,7 @@ namespace mjpc {
                 //model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
             } else if (md_engine == WASP) {
                 model_derivative = &wasp_md;
-                //wasp_md.RolloutCache(delta_time/model->opt.timestep, model->nv, model->na, model->nu, 2*model->nv+model->na, model->nsensordata);
+                wasp_md.RolloutCache(model, delta_time/model->opt.timestep+1);
                // wasp_md.needs_reset_cache=true;
             }
         // start timer
@@ -626,36 +626,18 @@ namespace mjpc {
                    1.0e-16;
         improvement = previous_return - trajectory[winner].total_return;
         // update error thresholds
+        if (model_derivative==&wasp_md && wasp_md.heuristic_mode){
         if (previous_return>1e-6) {
-            if (improvement < 1e-6) {
-                wasp_md.q_dtheta *=0.5;
-                wasp_md.q_dell*=0.5;
-                wasp_md.v_dtheta *=0.5;
-                wasp_md.v_dell *=0.5;
-                wasp_md.u_dtheta *=0.5;
-                wasp_md.u_dell *=0.5;
-                wasp_md.a_dtheta *=0.5;
-                wasp_md.a_dell *=0.5;
+            if (improvement/previous_return < 1e-2) {
+                wasp_md.x_eps =1e-6;
+                wasp_md.u_eps =1e-6;
             }
             else{
                 double ratio =previous_return /  trajectory[winner].total_return;
-                double gamma = 1.2;
-                wasp_md.q_dtheta *= gamma*pow(ratio,2.5);
-                wasp_md.q_dell *= gamma*pow(ratio,2.5);
-                wasp_md.v_dtheta *= gamma*pow(ratio,2.5);
-                wasp_md.v_dell *= gamma*pow(ratio,2.5);
-                wasp_md.u_dtheta *=gamma*pow(ratio,2.5);
-                wasp_md.u_dell *= gamma*pow(ratio,2.5);
-                wasp_md.a_dtheta *= gamma*pow(ratio,2.5);
-                wasp_md.a_dell *= gamma*pow(ratio,2.5);
-                wasp_md.q_dtheta = std::min(0.5, wasp_md.q_dtheta);
-                wasp_md.q_dell = std::min(0.5, wasp_md.q_dtheta);
-                wasp_md.v_dtheta = std::min(0.5, wasp_md.q_dtheta);
-                wasp_md.v_dell = std::min(0.5, wasp_md.q_dtheta);
-                wasp_md.u_dtheta = std::min(0.5, wasp_md.q_dtheta);
-                wasp_md.u_dell = std::min(0.5, wasp_md.q_dtheta);
-                wasp_md.a_dtheta = std::min(0.5, wasp_md.q_dtheta);
-                wasp_md.a_dell = std::min(0.5, wasp_md.q_dtheta);
+                wasp_md.x_eps *= wasp_md.gamma_eps*pow(ratio,wasp_md.alpha_eps);
+                wasp_md.u_eps *=wasp_md.gamma_eps*pow(ratio,wasp_md.alpha_eps);
+                wasp_md.x_eps = std::min(wasp_md.max_x_eps, wasp_md.x_eps);
+                wasp_md.u_eps = std::min(wasp_md.max_u_eps, wasp_md.u_eps);
                 /*
                 double ratio = 1 - trajectory[winner].total_return/previous_return;
                 double beta = 1.01;
@@ -677,6 +659,7 @@ namespace mjpc {
                 wasp_md.a_dell = std::min(0.4, wasp_md.q_dtheta);*/
 
             }
+        }
         }
 
         surprise = mju_min(mju_max(0, improvement / expected), 2);
@@ -738,6 +721,16 @@ namespace mjpc {
         rollouts_compute_time = rollouts_time;
         backward_pass_compute_time = backward_pass_time;
         policy_update_compute_time = policy_update_time;
+
+        if (log) {
+            log_file<< "  best return: " << trajectory[winner].total_return << '\n';
+            log_file << "  previous return: " << previous_return << '\n';
+            log_file << "  linesearch step size: " << action_step << '\n';
+            if (model_derivative == &wasp_md) log_file << "  number of sim. steps in model derivative: "<<wasp_md.num_dynamics_called << '\n';
+            log_file << "  improvement: " << improvement << '\n';
+            log_file << "  model derivative (ms): "<< model_derivative_compute_time * 1.0e-3 << '\n';
+            log_file << "\n\n";
+        }
     }
 
     // compute candidate trajectories

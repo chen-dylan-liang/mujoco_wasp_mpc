@@ -22,6 +22,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <fstream>
 
 #include <absl/functional/any_invocable.h>
 #include <mujoco/mujoco.h>
@@ -186,7 +187,9 @@ class Agent {
   std::vector<double> ctrl;
   bool reset_estimator = true;
   bool estimator_enabled = false;
-  int max_plan_iters = 100;
+  int max_plan_iters = -1;
+  int log_planning_data = 0;
+  //std::ofstream output_file;
 
  private:
   // model

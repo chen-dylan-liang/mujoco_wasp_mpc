@@ -7,7 +7,7 @@
 
 #include "model_derivatives.h"
 #include <mujoco/mujoco.h>
-#include <boost/circular_buffer.hpp>
+//#include <boost/circular_buffer.hpp>
 
 #include <cstdlib>
 #include <vector>
@@ -72,7 +72,7 @@ namespace mjpc {
                double tol, int mode, ThreadPool& pool, int skip = 0) override;
 
         // update cache n steps forward
-        void RolloutCache(int n, int dim_v, int dim_a, int dim_u, int dim_y, int dim_s);
+        void RolloutCache(const mjModel* m,int n);
     private:
         void ParaDerivEval(const mjModel *m,
             const std::vector<UniqueMjData> &data,
@@ -98,26 +98,33 @@ namespace mjpc {
             double tol,
             int mode,
             ThreadPool &pool);
-
-            boost::circular_buffer<mjWASPCache*> DyDq, DyDv, DyDa;//   std::vector<mjWASPCache*> DyDq, DyDv, DyDa;
-     boost::circular_buffer<mjWASPCache*>   DyDu; //  std::vector<mjWASPCache*> DyDu;
-       boost::circular_buffer<mjWASPCache*> DsDq, DsDv, DsDa;// std::vector<mjWASPCache*> DsDq, DsDv, DsDa;
-        boost::circular_buffer<mjWASPCache*>   DsDu; // std::vector<mjWASPCache*> DsDu;
+        void AllocateWASPData(const mjModel *m, int T);
+        void ResetWASPData(const mjModel *m, int T);
+        mjWASPBasis *qv_basis=nullptr, *u_basis=nullptr, *a_basis=nullptr;
+           std::vector<mjWASPCache*> DyDq, DyDv, DyDa;
+     std::vector<mjWASPCache*> DyDu;
+     std::vector<mjWASPCache*> DsDq, DsDv, DsDa;
+        std::vector<mjWASPCache*> DsDu;
         bool needs_allocate_cache=true;
         bool needs_reset_cache=false;
         bool use_wasp_identity_basis=false;
         bool all_in_parallel=false;
+        bool cache_rollout=false;
         // tuned interactively in planners' GUI
         friend class GradientPlanner;
         friend class iLQGPlanner;
-        double q_dtheta=1e-6, q_dell=1e-6;
-        double v_dtheta=1e-6, v_dell=1e-6;
-        double a_dtheta=1e-6, a_dell=1e-6;
-        double u_dtheta=1e-6, u_dell=1e-6;
+        double x_eps=1e-6;
+        double u_eps=1e-6;
+        double max_x_eps = 0.1;
+        double max_u_eps = 0.1;
+        double gamma_eps =1;
+        double alpha_eps =2;
         int q_max_wasp_iters=1;
         int v_max_wasp_iters=1;
         int a_max_wasp_iters=1;
         int u_max_wasp_iters=1;
+        std::atomic<int> num_dynamics_called;
+        bool heuristic_mode = false;
 
         std::vector<double> AT, BT, CT, DT;
     };
