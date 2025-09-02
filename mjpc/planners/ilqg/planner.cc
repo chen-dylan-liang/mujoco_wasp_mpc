@@ -302,8 +302,9 @@ namespace mjpc {
             {mjITEM_SLIDERNUM, "WASP u_eps", 2, &(wasp_md.u_eps), "0 1"},
 {mjITEM_SLIDERNUM, "WASP max_x_eps", 2, &(wasp_md.max_x_eps), "0 1"},
 {mjITEM_SLIDERNUM, "WASP max_u_eps", 2, &(wasp_md.max_u_eps), "0 1"},
-{mjITEM_SLIDERNUM, "WASP gamma_eps", 2, &(wasp_md.gamma_eps), "1 2"},
-{mjITEM_SLIDERNUM, "WASP alpha_eps", 2, &(wasp_md.alpha_eps), "1 2"},
+{mjITEM_SLIDERNUM, "WASP gamma_eps", 2, &(wasp_md.gamma_eps), "1.01 5"},
+{mjITEM_SLIDERNUM, "WASP avg_weight", 2, &(wasp_md.avg_weight), "0 1"},
+{mjITEM_SLIDERNUM, "WASP z_thresh", 2, &(wasp_md.z_threshold), "1 3"},
 {mjITEM_SELECT, "rollout wasp", 2, &(wasp_md.cache_rollout), "0\n1\n"},
 {mjITEM_SELECT, "heuristic wasp", 2, &(wasp_md.heuristic_mode), "0\n1\n"},
             {mjITEM_END}
@@ -444,11 +445,10 @@ namespace mjpc {
             if (md_engine == FD) {
                 //std::cout<<"switch to FD!"<<std::endl;
                 model_derivative = &fd_md;
-                //model_derivative->Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
             } else if (md_engine == WASP) {
                 model_derivative = &wasp_md;
                 wasp_md.RolloutCache(model, delta_time/model->opt.timestep+1);
-               // wasp_md.needs_reset_cache=true;
+                wasp_md.HeuristicUpdate(this->time);
             }
         // start timer
         auto model_derivative_start = std::chrono::steady_clock::now();
@@ -625,42 +625,7 @@ namespace mjpc {
                    (backward_pass.dV[0] + action_step * backward_pass.dV[1]) +
                    1.0e-16;
         improvement = previous_return - trajectory[winner].total_return;
-        // update error thresholds
-        if (model_derivative==&wasp_md && wasp_md.heuristic_mode){
-        if (previous_return>1e-6) {
-            if (improvement/previous_return < 1e-2) {
-                wasp_md.x_eps =1e-6;
-                wasp_md.u_eps =1e-6;
-            }
-            else{
-                double ratio =previous_return /  trajectory[winner].total_return;
-                wasp_md.x_eps *= wasp_md.gamma_eps*pow(ratio,wasp_md.alpha_eps);
-                wasp_md.u_eps *=wasp_md.gamma_eps*pow(ratio,wasp_md.alpha_eps);
-                wasp_md.x_eps = std::min(wasp_md.max_x_eps, wasp_md.x_eps);
-                wasp_md.u_eps = std::min(wasp_md.max_u_eps, wasp_md.u_eps);
-                /*
-                double ratio = 1 - trajectory[winner].total_return/previous_return;
-                double beta = 1.01;
-                wasp_md.q_dtheta *= exp(beta*ratio);
-                wasp_md.q_dell *= exp(beta*ratio);
-                wasp_md.v_dtheta *= exp(beta*ratio);
-                wasp_md.v_dell *= exp(beta*ratio);
-                wasp_md.u_dtheta *= exp(beta*ratio);
-                wasp_md.u_dell *= exp(beta*ratio);
-                wasp_md.a_dtheta *=exp(beta*ratio);
-                wasp_md.a_dell *= exp(beta*ratio);
-                wasp_md.q_dtheta = std::min(0.4, wasp_md.q_dtheta);
-                wasp_md.q_dell = std::min(0.4, wasp_md.q_dtheta);
-                wasp_md.v_dtheta = std::min(0.4, wasp_md.q_dtheta);
-                wasp_md.v_dell = std::min(0.4, wasp_md.q_dtheta);
-                wasp_md.u_dtheta = std::min(0.4, wasp_md.q_dtheta);
-                wasp_md.u_dell = std::min(0.4, wasp_md.q_dtheta);
-                wasp_md.a_dtheta = std::min(0.4, wasp_md.q_dtheta);
-                wasp_md.a_dell = std::min(0.4, wasp_md.q_dtheta);*/
 
-            }
-        }
-        }
 
         surprise = mju_min(mju_max(0, improvement / expected), 2);
 
@@ -723,8 +688,8 @@ namespace mjpc {
         policy_update_compute_time = policy_update_time;
 
         if (log) {
-            log_file<< "  best return: " << trajectory[winner].total_return << '\n';
-            log_file << "  previous return: " << previous_return << '\n';
+            log_file << "  return: " << previous_return << '\n';
+            log_file<< "  improved return by planner: " << trajectory[winner].total_return << '\n';
             log_file << "  linesearch step size: " << action_step << '\n';
             if (model_derivative == &wasp_md) log_file << "  number of sim. steps in model derivative: "<<wasp_md.num_dynamics_called << '\n';
             log_file << "  improvement: " << improvement << '\n';

@@ -109,26 +109,26 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
             if (m->na>0) a_basis=mj_newWASPBasis(na, use_wasp_identity_basis);
             for (int t = 0; t < T; ++t) {
                 DyDq.push_back(mj_newWASPCache(nv, dim_state_derivative));
-                DyDq[t]->i = t%nv;
+                //DyDq[t]->i = t%nv;
                 DyDv.push_back(mj_newWASPCache(nv, dim_state_derivative));
-                DyDv[t]->i = t%nv;
+                //DyDv[t]->i = t%nv;
                 if (m->na > 0) {
                     DyDa.push_back(mj_newWASPCache(na, dim_state_derivative));
-                    DyDa[t]->i = t%na;
+                    //DyDa[t]->i = t%na;
                 }
                 DyDu.push_back(mj_newWASPCache(nu, dim_state_derivative));
-                DyDu[t]->i = t%nu;
+                //DyDu[t]->i = t%nu;
                 // Ds caches use the same bases as these of Dy caches
                 DsDq.push_back(mj_newWASPCache(nv, dim_sensor));
-                DsDq[t]->i = t%nv;
+                //DsDq[t]->i = t%nv;
                 DsDv.push_back(mj_newWASPCache(nv, dim_sensor));
-                DsDv[t]->i = t%nv;
+               // DsDv[t]->i = t%nv;
                 if (m->na > 0) {
                     DsDa.push_back(mj_newWASPCache(na, dim_sensor));
-                    DsDa[t]->i = t%na;
+                    //DsDa[t]->i = t%na;
                 }
                 DsDu.push_back(mj_newWASPCache(nu, dim_sensor));
-                DsDu[t]->i = t%nu;
+               // DsDu[t]->i = t%nu;
             }
             needs_allocate_cache = false;
         }
@@ -149,6 +149,33 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                 mj_zeroWASPCache(DsDu[t], nu, dim_sensor);
             }
             needs_reset_cache = false;
+        }
+    }
+
+    void ModelDerivativesWASP::HeuristicUpdate(double time) {
+        // update error thresholds
+        /*
+        double delta = cost - exp_avg_cost;
+        if (heuristic_mode){
+            double std = exp_var_cost > 0 ? sqrt(exp_var_cost):1e-6;
+            double z_score = delta/std;
+            if (z_score > z_threshold) {
+                x_eps = 1e-4;
+                u_eps = 1e-4;
+            }
+            else if (delta<0.0&& cost >0.0){
+                x_eps *= gamma_eps;
+                u_eps *= gamma_eps;
+                x_eps = std::min(max_x_eps,x_eps);
+                u_eps = std::min(max_u_eps, u_eps);
+            }
+        }
+        exp_avg_cost =  (1-avg_weight) * cost + avg_weight * exp_avg_cost;
+        exp_var_cost =  (1-avg_weight) * delta * delta + avg_weight*exp_var_cost;*/
+        if (heuristic_mode) {
+            double T = 0.5;
+            x_eps = 0.5*sin(2*M_PI*time/T)+0.5;
+            u_eps = 0.5*cos(2*M_PI*time/T)+0.5;
         }
     }
 
@@ -208,7 +235,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                             m, this->qv_basis, this->qv_basis, this->a_basis,nullptr,
                             d, tol, mode,
                             this->x_eps, this->x_eps, this->q_max_wasp_iters,
-                            this->x_eps, this->x_eps, this->v_max_wasp_iters,
+                            this->u_eps, this->u_eps, this->v_max_wasp_iters,
                             this->x_eps, this->x_eps, this->a_max_wasp_iters,
                             this->u_eps, this->u_eps, this->u_max_wasp_iters,
                             /*A*/ nullptr,
@@ -222,7 +249,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                             m, this->qv_basis, this->qv_basis, this->a_basis,this->u_basis,
                             d, tol, mode,
                             this->x_eps, this->x_eps, this->q_max_wasp_iters,
-                            this->x_eps, this->x_eps, this->v_max_wasp_iters,
+                            this->u_eps, this->u_eps, this->v_max_wasp_iters,
                             this->x_eps, this->x_eps, this->a_max_wasp_iters,
                             this->u_eps, this->u_eps, this->u_max_wasp_iters,
                             /*A*/ DataAt(this->A, t * (dim_state_derivative * dim_state_derivative)),
