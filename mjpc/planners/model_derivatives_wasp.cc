@@ -153,29 +153,9 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
     }
 
     void ModelDerivativesWASP::HeuristicUpdate(double time) {
-        // update error thresholds
-        /*
-        double delta = cost - exp_avg_cost;
-        if (heuristic_mode){
-            double std = exp_var_cost > 0 ? sqrt(exp_var_cost):1e-6;
-            double z_score = delta/std;
-            if (z_score > z_threshold) {
-                x_eps = 1e-4;
-                u_eps = 1e-4;
-            }
-            else if (delta<0.0&& cost >0.0){
-                x_eps *= gamma_eps;
-                u_eps *= gamma_eps;
-                x_eps = std::min(max_x_eps,x_eps);
-                u_eps = std::min(max_u_eps, u_eps);
-            }
-        }
-        exp_avg_cost =  (1-avg_weight) * cost + avg_weight * exp_avg_cost;
-        exp_var_cost =  (1-avg_weight) * delta * delta + avg_weight*exp_var_cost;*/
         if (heuristic_mode) {
-            double T = 0.5;
-            x_eps = 0.5*sin(2*M_PI*time/T)+0.5;
-            u_eps = 0.5*cos(2*M_PI*time/T)+0.5;
+            x_eps = 0.5*max_x_eps*sin(2*M_PI*time/T_eps)+0.5*max_x_eps;
+            u_eps = 0.5*max_u_eps*cos(2*M_PI*time/T_eps)+0.5*max_u_eps;
         }
     }
 
@@ -235,7 +215,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                             m, this->qv_basis, this->qv_basis, this->a_basis,nullptr,
                             d, tol, mode,
                             this->x_eps, this->x_eps, this->q_max_wasp_iters,
-                            this->u_eps, this->u_eps, this->v_max_wasp_iters,
+                            this->x_eps, this->x_eps, this->v_max_wasp_iters,
                             this->x_eps, this->x_eps, this->a_max_wasp_iters,
                             this->u_eps, this->u_eps, this->u_max_wasp_iters,
                             /*A*/ nullptr,
@@ -249,7 +229,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                             m, this->qv_basis, this->qv_basis, this->a_basis,this->u_basis,
                             d, tol, mode,
                             this->x_eps, this->x_eps, this->q_max_wasp_iters,
-                            this->u_eps, this->u_eps, this->v_max_wasp_iters,
+                            this->x_eps, this->x_eps, this->v_max_wasp_iters,
                             this->x_eps, this->x_eps, this->a_max_wasp_iters,
                             this->u_eps, this->u_eps, this->u_max_wasp_iters,
                             /*A*/ DataAt(this->A, t * (dim_state_derivative * dim_state_derivative)),

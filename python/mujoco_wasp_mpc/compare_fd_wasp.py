@@ -121,7 +121,8 @@ def create_comparison_plots(file1_data, file2_data, file1_name, file2_name, save
 
     # Save plots if requested
     if save_plots:
-        plt.savefig('comparison_plots5.png', dpi=300, bbox_inches='tight')
+        plt.savefig('comparison_plots6'
+                    '.png', dpi=300, bbox_inches='tight')
         print("Comparison plots saved as 'comparison_plots.png'")
 
     # Show the plots
@@ -196,7 +197,7 @@ def main():
     """
     # Specify the paths to your data files
     file1_path = 'quadruped_static_walk.fd.out'  # Change this to your first file path
-    file2_path = 'quadruped_static_walk.wasp5.out'  # Change this to your second file path
+    file2_path = 'test.xml.out'  # Change this to your second file path
 
     # Get display names for the files
     file1_name = get_file_display_name(file1_path)

@@ -116,13 +116,9 @@ namespace mjpc {
         friend class iLQGPlanner;
         double x_eps=1e-4;
         double u_eps=1e-4;
-        double max_x_eps = 0.1;
-        double max_u_eps = 0.1;
-        double gamma_eps =1.5;
-        double avg_weight = 0.1;
-        double z_threshold = 2.0;
-        double exp_avg_cost=0.0;
-        double exp_var_cost=0.0;;
+        double max_x_eps = 1.0;
+        double max_u_eps = 1.0;
+        double T_eps=0.5;
         int q_max_wasp_iters=1;
         int v_max_wasp_iters=1;
         int a_max_wasp_iters=1;

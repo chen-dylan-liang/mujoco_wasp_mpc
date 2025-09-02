@@ -302,9 +302,7 @@ namespace mjpc {
             {mjITEM_SLIDERNUM, "WASP u_eps", 2, &(wasp_md.u_eps), "0 1"},
 {mjITEM_SLIDERNUM, "WASP max_x_eps", 2, &(wasp_md.max_x_eps), "0 1"},
 {mjITEM_SLIDERNUM, "WASP max_u_eps", 2, &(wasp_md.max_u_eps), "0 1"},
-{mjITEM_SLIDERNUM, "WASP gamma_eps", 2, &(wasp_md.gamma_eps), "1.01 5"},
-{mjITEM_SLIDERNUM, "WASP avg_weight", 2, &(wasp_md.avg_weight), "0 1"},
-{mjITEM_SLIDERNUM, "WASP z_thresh", 2, &(wasp_md.z_threshold), "1 3"},
+{mjITEM_SLIDERNUM, "WASP T_eps", 2, &(wasp_md.T_eps), "0 1"},
 {mjITEM_SELECT, "rollout wasp", 2, &(wasp_md.cache_rollout), "0\n1\n"},
 {mjITEM_SELECT, "heuristic wasp", 2, &(wasp_md.heuristic_mode), "0\n1\n"},
             {mjITEM_END}
