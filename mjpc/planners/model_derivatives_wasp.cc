@@ -152,12 +152,6 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
         }
     }
 
-    void ModelDerivativesWASP::HeuristicUpdate(double time) {
-        if (heuristic_mode) {
-            x_eps = 0.5*max_x_eps*sin(2*M_PI*time/T_eps)+0.5*max_x_eps;
-            u_eps = 0.5*max_u_eps*cos(2*M_PI*time/T_eps)+0.5*max_u_eps;
-        }
-    }
 
     void ModelDerivativesWASP::Compute(const mjModel *m, const std::vector<UniqueMjData> &data, const double *x,
                                        const double *u, const double *h, int dim_state, int dim_state_derivative,
@@ -214,10 +208,10 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                         cnt = mjd_transitionWASP(
                             m, this->qv_basis, this->qv_basis, this->a_basis,nullptr,
                             d, tol, mode,
-                            this->x_eps, this->x_eps, this->q_max_wasp_iters,
-                            this->x_eps, this->x_eps, this->v_max_wasp_iters,
-                            this->x_eps, this->x_eps, this->a_max_wasp_iters,
-                            this->u_eps, this->u_eps, this->u_max_wasp_iters,
+                            this->x_eps, this->x_eps, (int)(this->x_frac_wasp*m->nv),
+                            this->x_eps, this->x_eps, (int)(this->x_frac_wasp*m->nv),
+                            this->x_eps, this->x_eps, (int)(this->x_frac_wasp*m->na),
+                            this->u_eps, this->u_eps, (int)(this->u_frac_wasp*m->nu),
                             /*A*/ nullptr,
                             /*B*/ nullptr,
                             /*C*/ DataAt(this->C, t * (dim_sensor * dim_state_derivative)),
@@ -228,10 +222,10 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                          cnt= mjd_transitionWASP(
                             m, this->qv_basis, this->qv_basis, this->a_basis,this->u_basis,
                             d, tol, mode,
-                            this->x_eps, this->x_eps, this->q_max_wasp_iters,
-                            this->x_eps, this->x_eps, this->v_max_wasp_iters,
-                            this->x_eps, this->x_eps, this->a_max_wasp_iters,
-                            this->u_eps, this->u_eps, this->u_max_wasp_iters,
+                            this->x_eps, this->x_eps, (int)(this->x_frac_wasp*m->nv),
+                            this->x_eps, this->x_eps, (int)(this->x_frac_wasp*m->nv),
+                            this->x_eps, this->x_eps, (int)(this->x_frac_wasp*m->na),
+                            this->u_eps, this->u_eps, (int)(this->u_frac_wasp*m->nu),
                             /*A*/ DataAt(this->A, t * (dim_state_derivative * dim_state_derivative)),
                             /*B*/ DataAt(this->B, t * (dim_state_derivative * dim_action)),
                             /*C*/ DataAt(this->C, t * (dim_sensor * dim_state_derivative)),
@@ -281,7 +275,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     case 4:
                                          cnt=mjd_transitionWASPOneThread(m, this->qv_basis, d, tol, mode,
                                                                     this->x_eps, this->x_eps,
-                                                                    this->q_max_wasp_iters,
+                                                                    (int)(this->x_frac_wasp*m->nv),
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative)),
                                                                     this->DsDq[t], mjDsDq);
@@ -290,7 +284,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     case 5:
                                          cnt=mjd_transitionWASPOneThread(m, this->qv_basis, d, tol, mode,
                                                                     this->x_eps, this->x_eps,
-                                                                    this->v_max_wasp_iters,
+                                                                    (int)(this->x_frac_wasp*m->nv),
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative) + m->
                                                                            nv * dim_sensor), this->DsDv[t], mjDsDv);
@@ -299,7 +293,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     case 6:
                                          cnt=mjd_transitionWASPOneThread(m, this->a_basis, d, tol, mode,
                                                                     this->x_eps, this->x_eps,
-                                                                    this->a_max_wasp_iters,
+                                                                    (int)(this->x_frac_wasp*m->na),
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative) + 2 *
                                                                            m->nv * dim_sensor), this->DsDa[t], mjDsDa);
@@ -308,7 +302,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     case 7:
                                         cnt= mjd_transitionWASPOneThread(m, this->u_basis, d, tol, mode,
                                                                     this->u_eps, this->u_eps,
-                                                                    this->u_max_wasp_iters,
+                                                                    (int)(this->u_frac_wasp*m->nu),
                                                                     DataAt(this->DT, t * (dim_sensor * dim_action)),
                                                                     this->DsDu[t], mjDsDu);
                                         break;
@@ -322,7 +316,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     case 0:
                                         cnt= mjd_transitionWASPOneThread(m, this->qv_basis, d, tol, mode,
                                                                     this->x_eps, this->x_eps,
-                                                                    this->q_max_wasp_iters,
+                                                                    (int)(this->x_frac_wasp*m->nv),
                                                                     DataAt(this->AT,
                                                                            t * (dim_state_derivative *
                                                                                dim_state_derivative)), this->DyDq[t],
@@ -332,7 +326,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     case 1:
                                         cnt= mjd_transitionWASPOneThread(m, this->qv_basis, d, tol, mode,
                                                                     this->x_eps, this->x_eps,
-                                                                    this->v_max_wasp_iters,
+                                                                    (int)(this->x_frac_wasp*m->nv),
                                                                     DataAt(this->AT,
                                                                            t * (dim_state_derivative *
                                                                                dim_state_derivative) + m->nv *
@@ -343,7 +337,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     case 2:
                                         cnt= mjd_transitionWASPOneThread(m, this->a_basis, d, tol, mode,
                                                                     this->x_eps, this->x_eps,
-                                                                    this->a_max_wasp_iters,
+                                                                    (int)(this->x_frac_wasp*m->na),
                                                                     DataAt(this->AT,
                                                                            t * (dim_state_derivative *
                                                                                dim_state_derivative) + 2 * m->nv *
@@ -354,7 +348,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     case 3:
                                         cnt= mjd_transitionWASPOneThread(m,this->u_basis, d, tol, mode,
                                                                     this->u_eps, this->u_eps,
-                                                                    this->u_max_wasp_iters,
+                                                                    (int)(this->u_frac_wasp*m->nu),
                                                                     DataAt(this->BT,
                                                                            t * (dim_state_derivative * dim_action)),
                                                                     this->DyDu[t], mjDyDu);
@@ -363,7 +357,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     case 4:
                                         cnt= mjd_transitionWASPOneThread(m, this->qv_basis, d, tol, mode,
                                                                     this->x_eps, this->x_eps,
-                                                                    this->q_max_wasp_iters,
+                                                                    (int)(this->x_frac_wasp*m->nv),
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative)),
                                                                     this->DsDq[t], mjDsDq);
@@ -372,7 +366,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     case 5:
                                         cnt= mjd_transitionWASPOneThread(m,this->qv_basis, d, tol, mode,
                                                                     this->x_eps, this->x_eps,
-                                                                    this->v_max_wasp_iters,
+                                                                    (int)(this->x_frac_wasp*m->nv),
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative) + m->
                                                                            nv * dim_sensor), this->DsDv[t], mjDsDv);
@@ -381,7 +375,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     case 6:
                                         cnt= mjd_transitionWASPOneThread(m,this->a_basis, d, tol, mode,
                                                                     this->x_eps, this->x_eps,
-                                                                    this->a_max_wasp_iters,
+                                                                    (int)(this->x_frac_wasp*m->na),
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative) + 2 *
                                                                            m->nv * dim_sensor), this->DsDa[t], mjDsDa);
@@ -390,7 +384,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     default:
                                         cnt= mjd_transitionWASPOneThread(m, this->u_basis, d, tol, mode,
                                                                     this->u_eps, this->u_eps,
-                                                                    this->u_max_wasp_iters,
+                                                                    (int)(this->u_frac_wasp*m->nu),
                                                                     DataAt(this->DT, t * (dim_sensor * dim_action)),
                                                                     this->DsDu[t], mjDsDu);
                                         break;
@@ -429,7 +423,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     case 3:
                                         cnt= mjd_transitionWASPOneThread(m, this->qv_basis, d, tol, mode,
                                                                     this->x_eps, this->x_eps,
-                                                                    this->q_max_wasp_iters,
+                                                                    (int)(this->x_frac_wasp*m->nv),
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative)),
                                                                     this->DsDq[t], mjDsDq);
@@ -438,7 +432,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     case 4:
                                         cnt= mjd_transitionWASPOneThread(m,this->qv_basis, d, tol, mode,
                                                                     this->x_eps, this->x_eps,
-                                                                    this->v_max_wasp_iters,
+                                                                    (int)(this->x_frac_wasp*m->nv),
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative) + m->
                                                                            nv * dim_sensor), this->DsDv[t], mjDsDv);
@@ -447,7 +441,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     case 5:
                                         cnt= mjd_transitionWASPOneThread(m, this->u_basis, d, tol, mode,
                                                                     this->u_eps, this->u_eps,
-                                                                    this->u_max_wasp_iters,
+                                                                    (int)(this->u_frac_wasp*m->nu),
                                                                     DataAt(this->DT, t * (dim_sensor * dim_action)),
                                                                     this->DsDu[t], mjDsDu);
                                         break;
@@ -461,7 +455,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     case 0:
                                         cnt= mjd_transitionWASPOneThread(m,this->qv_basis, d, tol, mode,
                                                                     this->x_eps, this->x_eps,
-                                                                    this->q_max_wasp_iters,
+                                                                    (int)(this->x_frac_wasp*m->nv),
                                                                     DataAt(this->AT,
                                                                            t * (dim_state_derivative *
                                                                                dim_state_derivative)), this->DyDq[t],
@@ -471,7 +465,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     case 1:
                                         cnt= mjd_transitionWASPOneThread(m,this->qv_basis, d, tol, mode,
                                                                     this->x_eps, this->x_eps,
-                                                                    this->v_max_wasp_iters,
+                                                                    (int)(this->x_frac_wasp*m->nv),
                                                                     DataAt(this->AT,
                                                                            t * (dim_state_derivative *
                                                                                dim_state_derivative) + m->nv *
@@ -482,7 +476,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     case 2:
                                         cnt= mjd_transitionWASPOneThread(m, this->u_basis, d, tol, mode,
                                                                     this->u_eps, this->u_eps,
-                                                                    this->u_max_wasp_iters,
+                                                                    (int)(this->u_frac_wasp*m->nu),
                                                                     DataAt(this->BT,
                                                                            t * (dim_state_derivative * dim_action)),
                                                                     this->DyDu[t], mjDyDu);
@@ -491,7 +485,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     case 3:
                                         cnt= mjd_transitionWASPOneThread(m,this->qv_basis, d, tol, mode,
                                                                     this->x_eps, this->x_eps,
-                                                                    this->q_max_wasp_iters,
+                                                                    (int)(this->x_frac_wasp*m->nv),
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative)),
                                                                     this->DsDq[t], mjDsDq);
@@ -500,7 +494,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     case 4:
                                         cnt= mjd_transitionWASPOneThread(m, this->qv_basis, d, tol, mode,
                                                                     this->x_eps, this->x_eps,
-                                                                    this->v_max_wasp_iters,
+                                                                    (int)(this->x_frac_wasp*m->nv),
                                                                     DataAt(this->CT,
                                                                            t * (dim_sensor * dim_state_derivative) + m->
                                                                            nv * dim_sensor), this->DsDv[t], mjDsDv);
@@ -509,7 +503,7 @@ AT.begin() + T * dim_state_derivative * dim_state_derivative, 0.0);
                                     default:
                                         cnt= mjd_transitionWASPOneThread(m, this->u_basis, d, tol, mode,
                                                                     this->u_eps, this->u_eps,
-                                                                    this->u_max_wasp_iters,
+                                                                    (int)(this->u_frac_wasp*m->nu),
                                                                     DataAt(this->DT, t * (dim_sensor * dim_action)),
                                                                     this->DsDu[t], mjDsDu);
                                         break;

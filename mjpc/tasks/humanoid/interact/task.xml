@@ -14,7 +14,7 @@
   <!-- if you activate the scene below, make sure to set kNumberOfFreeJoints=1-->
   <!-- <include file="./scenes/dining_chair.xml"/> -->
 
-  <size memory="400K"/>
+  <size memory="1M"/>
 
   <visual>
     <global offwidth="1280" offheight="1280" />

@@ -121,10 +121,6 @@ namespace mjpc {
     // model derivatives
     fd_md.Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
     wasp_md.Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
-    wasp_md.q_max_wasp_iters = model->nv;
-    wasp_md.v_max_wasp_iters = model->nv;
-    wasp_md.a_max_wasp_iters = model->na;
-    wasp_md.u_max_wasp_iters = model->nu;
 
     // cost derivatives
     cost_derivative.Reset(dim_state_derivative, dim_action, task->num_residual,
@@ -482,31 +478,6 @@ namespace mjpc {
 
   // planner-specific GUI elements
   void GradientPlanner::GUI(mjUI &ui) {
-    mjuiDef wasp_iter_q, wasp_iter_v, wasp_iter_a, wasp_iter_u;
-    // init for q
-    wasp_iter_q.type = mjITEM_SLIDERINT;
-    std::snprintf(wasp_iter_q.name, sizeof(wasp_iter_q.name), "%s", "WASP Iter. q");
-    wasp_iter_q.state = 2;
-    wasp_iter_q.pdata = &wasp_md.q_max_wasp_iters;
-    std::snprintf( wasp_iter_q.other, sizeof(wasp_iter_q.other), "1 %d", model->nv);
-    // init for v
-    wasp_iter_v.type = mjITEM_SLIDERINT;
-    std::snprintf(wasp_iter_v.name, sizeof(wasp_iter_v.name), "%s", "WASP Iter. v");
-    wasp_iter_v.state = 2;
-    wasp_iter_v.pdata = &wasp_md.v_max_wasp_iters;
-    std::snprintf( wasp_iter_v.other, sizeof(wasp_iter_v.other), "1 %d", model->nv);
-    // init for a
-    wasp_iter_a.type = mjITEM_SLIDERINT;
-    std::snprintf(wasp_iter_a.name, sizeof(wasp_iter_a.name), "%s", "WASP Iter. a");
-    wasp_iter_a.state = 2;
-    wasp_iter_a.pdata = &wasp_md.a_max_wasp_iters;
-    std::snprintf( wasp_iter_a.other, sizeof(wasp_iter_a.other), "%d %d",std::min(model->na,1) ,model->na);
-    // init for u
-    wasp_iter_u.type = mjITEM_SLIDERINT;
-    std::snprintf(wasp_iter_u.name, sizeof(wasp_iter_u.name), "%s", "WASP Iter. u");
-    wasp_iter_u.state = 2;
-    wasp_iter_u.pdata = &wasp_md.u_max_wasp_iters;
-    std::snprintf( wasp_iter_u.other, sizeof(wasp_iter_u.other), "1 %d", model->nu);
     mjuiDef defGradientPlanner[] = {
       {mjITEM_SLIDERINT, "Rollouts", 2, &num_trajectory, "0 1"},
       // {mjITEM_RADIO, "Action Lmt.", 2, &settings.action_limits, "Off\nOn"},
@@ -518,11 +489,11 @@ namespace mjpc {
       {mjITEM_SLIDERINT, "Spline Pts", 2, &policy.num_spline_points, "0 1"},
       {mjITEM_SLIDERINT, "Deriv. Skip", 2, &derivative_skip_, "0 16"},
       {mjITEM_SELECT, "MD Engine", 2, &md_engine, "FD\nWASP\n"},
-      wasp_iter_q, wasp_iter_v, wasp_iter_a, wasp_iter_u,
+{mjITEM_SLIDERNUM, "WASP x_frac", 2, &(wasp_md.x_frac_wasp), "0 1"},
+{mjITEM_SLIDERNUM, "WASP u_frac", 2, &(wasp_md.u_frac_wasp), "0 1"},
 {mjITEM_SLIDERNUM, "WASP x_eps", 2, &(wasp_md.x_eps), "0 1"},
             {mjITEM_SLIDERNUM, "WASP u_eps", 2, &(wasp_md.u_eps), "0 1"},
 {mjITEM_SELECT, "rollout wasp cache", 2, &(wasp_md.cache_rollout), "0 1"},
-{mjITEM_SELECT, "heuristic wasp eps", 2, &(wasp_md.heuristic_mode), "0 1"},
       {mjITEM_END}
     };
 

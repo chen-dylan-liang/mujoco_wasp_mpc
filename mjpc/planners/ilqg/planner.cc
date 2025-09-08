@@ -119,10 +119,6 @@ namespace mjpc {
         // model derivatives
         fd_md.Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
         wasp_md.Reset(dim_state_derivative, dim_action, dim_sensor, horizon);
-        wasp_md.q_max_wasp_iters = model->nv;
-        wasp_md.v_max_wasp_iters = model->nv;
-        wasp_md.a_max_wasp_iters = model->na;
-        wasp_md.u_max_wasp_iters = model->nu;
         // cost derivatives
         cost_derivative.Reset(dim_state_derivative, dim_action, task->num_residual,
                               horizon);
@@ -257,32 +253,6 @@ namespace mjpc {
 
     // planner-specific GUI elements
     void iLQGPlanner::GUI(mjUI &ui) {
-        mjuiDef wasp_iter_q, wasp_iter_v, wasp_iter_a, wasp_iter_u;
-        // init for q
-        wasp_iter_q.type = mjITEM_SLIDERINT;
-        std::snprintf(wasp_iter_q.name, sizeof(wasp_iter_q.name), "%s", "WASP Iter. q");
-        wasp_iter_q.state = 2;
-        wasp_iter_q.pdata = &wasp_md.q_max_wasp_iters;
-        std::snprintf( wasp_iter_q.other, sizeof(wasp_iter_q.other), "1 %d", model->nv);
-        // init for v
-        wasp_iter_v.type = mjITEM_SLIDERINT;
-        std::snprintf(wasp_iter_v.name, sizeof(wasp_iter_v.name), "%s", "WASP Iter. v");
-        wasp_iter_v.state = 2;
-        wasp_iter_v.pdata = &wasp_md.v_max_wasp_iters;
-        std::snprintf( wasp_iter_v.other, sizeof(wasp_iter_v.other), "1 %d", model->nv);
-        // init for a
-        wasp_iter_a.type = mjITEM_SLIDERINT;
-        std::snprintf(wasp_iter_a.name, sizeof(wasp_iter_a.name), "%s", "WASP Iter. a");
-        wasp_iter_a.state = 2;
-        wasp_iter_a.pdata = &wasp_md.a_max_wasp_iters;
-        std::snprintf( wasp_iter_a.other, sizeof(wasp_iter_a.other), "%d %d",std::min(model->na,1) ,model->na);
-        // init for u
-        wasp_iter_u.type = mjITEM_SLIDERINT;
-        std::snprintf(wasp_iter_u.name, sizeof(wasp_iter_u.name), "%s", "WASP Iter. u");
-        wasp_iter_u.state = 2;
-        wasp_iter_u.pdata = &wasp_md.u_max_wasp_iters;
-        std::snprintf( wasp_iter_u.other, sizeof(wasp_iter_u.other), "1 %d", model->nu);
-
         mjuiDef defiLQG[] = {
             {mjITEM_SLIDERINT, "Rollouts", 2, &num_rollouts_gui_, "0 1"},
             // {mjITEM_RADIO, "Action Lmt.", 2, &settings.action_limits, "Off\nOn"},
@@ -297,14 +267,12 @@ namespace mjpc {
             {mjITEM_SLIDERINT, "Deriv. Skip", 2, &derivative_skip_, "0 16"},
             {mjITEM_CHECKINT, "Terminal Print", 2, &settings.verbose, ""},
             {mjITEM_SELECT, "MD Engine", 2, &md_engine, "FD\nWASP\n"},
-            wasp_iter_q, wasp_iter_v, wasp_iter_a, wasp_iter_u,
+{mjITEM_SLIDERNUM, "WASP x_frac", 2, &(wasp_md.x_frac_wasp), "0 1"},
+{mjITEM_SLIDERNUM, "WASP u_frac", 2, &(wasp_md.u_frac_wasp), "0 1"},
             {mjITEM_SLIDERNUM, "WASP x_eps", 2, &(wasp_md.x_eps), "0 1"},
             {mjITEM_SLIDERNUM, "WASP u_eps", 2, &(wasp_md.u_eps), "0 1"},
-{mjITEM_SLIDERNUM, "WASP max_x_eps", 2, &(wasp_md.max_x_eps), "0 1"},
-{mjITEM_SLIDERNUM, "WASP max_u_eps", 2, &(wasp_md.max_u_eps), "0 1"},
-{mjITEM_SLIDERNUM, "WASP T_eps", 2, &(wasp_md.T_eps), "0 1"},
+//{mjITEM_SLIDERNUM, "WASP T_eps", 2, &(wasp_md.T_eps), "0 1"},
 {mjITEM_SELECT, "rollout wasp", 2, &(wasp_md.cache_rollout), "0\n1\n"},
-{mjITEM_SELECT, "heuristic wasp", 2, &(wasp_md.heuristic_mode), "0\n1\n"},
             {mjITEM_END}
         };
 
@@ -428,8 +396,7 @@ namespace mjpc {
 
     // single iLQG iteration
     void iLQGPlanner::Iteration(int horizon, ThreadPool &pool) {
-        // set previous best cost
-        double previous_return = candidate_policy[0].trajectory.total_return;
+
 
         // ----- setup ----- //
         // resize data for rollouts
@@ -446,8 +413,9 @@ namespace mjpc {
             } else if (md_engine == WASP) {
                 model_derivative = &wasp_md;
                 wasp_md.RolloutCache(model, delta_time/model->opt.timestep+1);
-                wasp_md.HeuristicUpdate(this->time);
             }
+        // set previous best cost
+        previous_return = candidate_policy[0].trajectory.total_return;
         // start timer
         auto model_derivative_start = std::chrono::steady_clock::now();
 

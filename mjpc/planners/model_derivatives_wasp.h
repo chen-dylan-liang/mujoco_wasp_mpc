@@ -99,7 +99,6 @@ namespace mjpc {
             int mode,
             ThreadPool &pool);
         void AllocateWASPData(const mjModel *m, int T);
-        void HeuristicUpdate(double cost);
         void ResetWASPData(const mjModel *m, int T);
         mjWASPBasis *qv_basis=nullptr, *u_basis=nullptr, *a_basis=nullptr;
            std::vector<mjWASPCache*> DyDq, DyDv, DyDa;
@@ -114,17 +113,11 @@ namespace mjpc {
         // tuned interactively in planners' GUI
         friend class GradientPlanner;
         friend class iLQGPlanner;
-        double x_eps=1e-4;
-        double u_eps=1e-4;
-        double max_x_eps = 1.0;
-        double max_u_eps = 1.0;
-        double T_eps=0.5;
-        int q_max_wasp_iters=1;
-        int v_max_wasp_iters=1;
-        int a_max_wasp_iters=1;
-        int u_max_wasp_iters=1;
+        double x_eps=0.5;
+        double u_eps=0.5;
+        double x_frac_wasp=0.5;
+        double u_frac_wasp=0.3;
         std::atomic<int> num_dynamics_called;
-        bool heuristic_mode = true;
 
         std::vector<double> AT, BT, CT, DT;
     };

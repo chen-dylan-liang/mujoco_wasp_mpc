@@ -150,6 +150,7 @@ class iLQGPlanner : public Planner {
   double improvement;
   double expected;
   double surprise;
+  double previous_return=0.0;
 
   // compute time
   double nominal_compute_time;

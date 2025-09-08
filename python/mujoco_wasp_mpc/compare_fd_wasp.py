@@ -4,18 +4,21 @@ import numpy as np
 import os
 
 
-def parse_data(file_path):
+def parse_data(file_path, has_sim_steps=False):
     """
-    Parse the data file and extract return values and model derivative times.
+    Parse the data file and extract return values, model derivative times, and optionally sim steps.
 
     Args:
         file_path (str): Path to the data file
+        has_sim_steps (bool): Whether this file contains simulation steps data
 
     Returns:
-        tuple: (returns, model_derivatives) - lists of parsed values
+        tuple: (returns, model_derivatives, sim_steps) - lists of parsed values
+               sim_steps will be empty list if has_sim_steps is False
     """
     returns = []
     model_derivatives = []
+    sim_steps = []
 
     try:
         with open(file_path, 'r') as file:
@@ -24,6 +27,7 @@ def parse_data(file_path):
         # Regular expressions to match the patterns
         return_pattern = r'return:\s+([\d.]+)'
         model_derivative_pattern = r'model derivative \(ms\):\s+([\d.]+)'
+        sim_steps_pattern = r'number of sim\. steps in model derivative:\s+(\d+)'
 
         # Find all matches
         return_matches = re.findall(return_pattern, content)
@@ -33,35 +37,47 @@ def parse_data(file_path):
         returns = [float(x) for x in return_matches]
         model_derivatives = [float(x) for x in derivative_matches]
 
-        print(f"Parsed {len(returns)} return values and {len(model_derivatives)} derivative values from {file_path}")
+        # Parse simulation steps if requested
+        if has_sim_steps:
+            sim_steps_matches = re.findall(sim_steps_pattern, content)
+            sim_steps = [int(x) for x in sim_steps_matches]
+            print(
+                f"Parsed {len(returns)} return values, {len(model_derivatives)} derivative values, and {len(sim_steps)} sim steps from {file_path}")
+        else:
+            print(
+                f"Parsed {len(returns)} return values and {len(model_derivatives)} derivative values from {file_path}")
 
     except FileNotFoundError:
         print(f"Error: File '{file_path}' not found.")
-        return [], []
+        return [], [], []
     except Exception as e:
         print(f"Error reading file {file_path}: {e}")
-        return [], []
+        return [], [], []
 
-    return returns, model_derivatives
+    return returns, model_derivatives, sim_steps
 
 
-def create_comparison_plots(file1_data, file2_data, file1_name, file2_name, save_plots=False):
+def create_comparison_plots(file1_data, file2_data, file1_name, file2_name, save_plots=False, output_filename=None):
     """
-    Create comparison plots for returns and model derivatives from two files.
+    Create comparison plots for returns, model derivatives, and sim steps from two files.
 
     Args:
-        file1_data (tuple): (returns, model_derivatives) from first file
-        file2_data (tuple): (returns, model_derivatives) from second file
+        file1_data (tuple): (returns, model_derivatives, sim_steps) from first file
+        file2_data (tuple): (returns, model_derivatives, sim_steps) from second file
         file1_name (str): Name/label for first file
         file2_name (str): Name/label for second file
         save_plots (bool): Whether to save plots to files
+        output_filename (str): Custom filename for saved plot (without extension)
     """
-    returns1, derivatives1 = file1_data
-    returns2, derivatives2 = file2_data
+    returns1, derivatives1, sim_steps1 = file1_data
+    returns2, derivatives2, sim_steps2 = file2_data
 
     if not (returns1 and derivatives1 and returns2 and derivatives2):
         print("Insufficient data to create comparison plots.")
         return
+
+    # Determine if we have sim steps data
+    has_sim_steps = len(sim_steps2) > 0  # Assuming file2 has the sim steps data
 
     # Create iteration indices
     iterations1_returns = list(range(1, len(returns1) + 1))
@@ -69,8 +85,12 @@ def create_comparison_plots(file1_data, file2_data, file1_name, file2_name, save
     iterations1_derivatives = list(range(1, len(derivatives1) + 1))
     iterations2_derivatives = list(range(1, len(derivatives2) + 1))
 
-    # Create figure with two subplots
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 12))
+    # Create figure with appropriate number of subplots
+    if has_sim_steps:
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(14, 16))
+        iterations2_sim_steps = list(range(1, len(sim_steps2) + 1))
+    else:
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 12))
 
     # Plot 1: Returns Comparison
     ax1.plot(iterations1_returns, returns1, 'b-', linewidth=1.5, alpha=0.8, label=file1_name)
@@ -116,14 +136,33 @@ def create_comparison_plots(file1_data, file2_data, file1_name, file2_name, save
     max_iterations_derivatives = max(len(derivatives1), len(derivatives2))
     ax2.set_xlim(1, max_iterations_derivatives)
 
+    # Plot 3: Simulation Steps (only for file2 if available)
+    if has_sim_steps:
+        ax3.plot(iterations2_sim_steps, sim_steps2, 'orange', linewidth=1.5, alpha=0.8, label=file2_name)
+        ax3.set_title('Number of Simulation Steps in Model Derivative Over Iterations', fontsize=16, fontweight='bold')
+        ax3.set_xlabel('Iteration', fontsize=12)
+        ax3.set_ylabel('Number of Sim Steps', fontsize=12)
+        ax3.grid(True, alpha=0.3)
+        ax3.legend(fontsize=11)
+
+        # Add mean line for sim steps
+        mean_sim_steps = np.mean(sim_steps2)
+        ax3.axhline(y=mean_sim_steps, color='orange', linestyle='--', alpha=0.6,
+                    label=f'{file2_name} Mean: {mean_sim_steps:.0f} steps')
+        ax3.legend(fontsize=10)
+        ax3.set_xlim(1, len(sim_steps2))
+
     # Adjust layout to prevent overlap
     plt.tight_layout()
 
     # Save plots if requested
     if save_plots:
-        plt.savefig('comparison_plots6'
-                    '.png', dpi=300, bbox_inches='tight')
-        print("Comparison plots saved as 'comparison_plots.png'")
+        if output_filename:
+            filename = f"{output_filename}.png"
+        else:
+            filename = 'comparison_plots_with_simsteps.png' if has_sim_steps else 'comparison_plots.png'
+        plt.savefig(filename, dpi=300, bbox_inches='tight')
+        print(f"Comparison plots saved as '{filename}'")
 
     # Show the plots
     plt.show()
@@ -161,6 +200,15 @@ def create_comparison_plots(file1_data, file2_data, file1_name, file2_name, save
     print(f"  Min: {min(derivatives2):.2f}")
     print(f"  Max: {max(derivatives2):.2f}")
 
+    # Print sim steps statistics if available
+    if has_sim_steps:
+        print(f"\n{file2_name.upper()} - SIMULATION STEPS:")
+        print(f"  Count: {len(sim_steps2)}")
+        print(f"  Mean: {mean_sim_steps:.0f}")
+        print(f"  Std: {np.std(sim_steps2):.0f}")
+        print(f"  Min: {min(sim_steps2)}")
+        print(f"  Max: {max(sim_steps2)}")
+
     # Print comparison insights
     print("\n" + "=" * 60)
     print("COMPARISON INSIGHTS")
@@ -183,6 +231,15 @@ def create_comparison_plots(file1_data, file2_data, file1_name, file2_name, save
     else:
         print("  → Computation times are similar")
 
+    if has_sim_steps:
+        print(f"\nAverage Simulation Steps ({file2_name}): {mean_sim_steps:.0f}")
+        if mean_sim_steps > 1000:
+            print("  → High number of simulation steps")
+        elif mean_sim_steps < 100:
+            print("  → Low number of simulation steps")
+        else:
+            print("  → Moderate number of simulation steps")
+
 
 def get_file_display_name(file_path):
     """
@@ -196,8 +253,11 @@ def main():
     Main function to run the data processing and comparison plotting.
     """
     # Specify the paths to your data files
-    file1_path = 'quadruped_static_walk.fd.out'  # Change this to your first file path
-    file2_path = 'test.xml.out'  # Change this to your second file path
+    file1_path = 'fd.out'  # First file (without sim steps)
+    file2_path = 'low_mem.out'  # Second file (with sim steps)
+
+    # Specify custom output filename (without extension) - set to None for default naming
+    output_filename = 'low_mem'  # Change this to your desired filename, or set to None
 
     # Get display names for the files
     file1_name = get_file_display_name(file1_path)
@@ -205,14 +265,15 @@ def main():
 
     print("Parsing data files...")
 
-    # Parse both files
-    file1_data = parse_data(file1_path)
-    file2_data = parse_data(file2_path)
+    # Parse both files - file2 has simulation steps data
+    file1_data = parse_data(file1_path, has_sim_steps=False)
+    file2_data = parse_data(file2_path, has_sim_steps=True)
 
     # Check if both files were parsed successfully
     if (file1_data[0] and file1_data[1] and file2_data[0] and file2_data[1]):
         print("Creating comparison plots...")
-        create_comparison_plots(file1_data, file2_data, file1_name, file2_name, save_plots=True)
+        create_comparison_plots(file1_data, file2_data, file1_name, file2_name,
+                                save_plots=True, output_filename=output_filename)
     else:
         print("Failed to parse one or both data files. Please check your file paths and formats.")
         if not (file1_data[0] and file1_data[1]):

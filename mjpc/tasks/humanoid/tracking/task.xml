@@ -2,7 +2,7 @@
   <include file="../../common.xml"/>
   <!-- modified from: https://github.com/google-deepmind/dm_control/blob/main/dm_control/suite/humanoid.xml -->
   <include file="../humanoid_modified.xml" />
-  <size memory="400K"/>
+  <size memory="1M"/>
 
   <custom>
     <text name="task_transition" data="Jump|Kick Spin|Spin Kick|Cartwheel (1)|Crouch Flip|Cartwheel (2)|Monkey Flip|Dance|Run|Walk" />
