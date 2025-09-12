@@ -1,286 +1,231 @@
-import re
 import matplotlib.pyplot as plt
 import numpy as np
-import os
+import re
+from matplotlib.ticker import MaxNLocator
+import matplotlib as mpl
+import matplotlib as mpl
+import matplotlib as mpl
+mpl.rcParams.update({
+    "font.family": "STIXGeneral",
+    "font.serif": ["STIXGeneral"],
+    "mathtext.fontset": "stix",
+    "font.size": 12,
+    "axes.labelsize": 14,
+    "axes.titlesize": 10,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12,
+    "legend.fontsize": 14,
+    "pdf.fonttype": 42,
+    "ps.fonttype": 42,
+})
+plt.rcParams['axes.labelweight'] = 'bold'
 
 
-def parse_data(file_path, has_sim_steps=False):
-    """
-    Parse the data file and extract return values, model derivative times, and optionally sim steps.
 
-    Args:
-        file_path (str): Path to the data file
-        has_sim_steps (bool): Whether this file contains simulation steps data
-
-    Returns:
-        tuple: (returns, model_derivatives, sim_steps) - lists of parsed values
-               sim_steps will be empty list if has_sim_steps is False
-    """
-    returns = []
-    model_derivatives = []
-    sim_steps = []
+def parse_file(filepath):
+    """Parse a single output file and extract relevant metrics."""
+    data = {
+        'return': [],
+        'model_derivatives': [],
+        'sim_steps': []
+    }
 
     try:
-        with open(file_path, 'r') as file:
-            content = file.read()
+        with open(filepath, 'r') as f:
+            lines = f.readlines()
 
-        # Regular expressions to match the patterns
-        return_pattern = r'return:\s+([\d.]+)'
-        model_derivative_pattern = r'model derivative \(ms\):\s+([\d.]+)'
-        sim_steps_pattern = r'number of sim\. steps in model derivative:\s+(\d+)'
+        for i, line in enumerate(lines):
+            line = line.strip()
 
-        # Find all matches
-        return_matches = re.findall(return_pattern, content)
-        derivative_matches = re.findall(model_derivative_pattern, content)
+            # Extract return values
+            if line.startswith('return:'):
+                value = float(line.split(':')[1].strip())
+                data['return'].append(value)
 
-        # Convert to float
-        returns = [float(x) for x in return_matches]
-        model_derivatives = [float(x) for x in derivative_matches]
+            # Extract model derivatives (in milliseconds)
+            elif line.startswith('model derivatives:'):
+                value = float(line.split(':')[1].strip())
+                data['model_derivatives'].append(value)
 
-        # Parse simulation steps if requested
-        if has_sim_steps:
-            sim_steps_matches = re.findall(sim_steps_pattern, content)
-            sim_steps = [int(x) for x in sim_steps_matches]
-            print(
-                f"Parsed {len(returns)} return values, {len(model_derivatives)} derivative values, and {len(sim_steps)} sim steps from {file_path}")
-        else:
-            print(
-                f"Parsed {len(returns)} return values and {len(model_derivatives)} derivative values from {file_path}")
+            # Extract number of simulation steps
+            elif line.startswith('number of sim. steps in model derivative:'):
+                value = int(line.split(':')[1].strip())
+                data['sim_steps'].append(value)
 
     except FileNotFoundError:
-        print(f"Error: File '{file_path}' not found.")
-        return [], [], []
+        print(f"Warning: File {filepath} not found")
     except Exception as e:
-        print(f"Error reading file {file_path}: {e}")
-        return [], [], []
+        print(f"Error parsing {filepath}: {e}")
 
-    return returns, model_derivatives, sim_steps
+    data['return'] = data['return'][100:]
+    data['model_derivatives'] = data['model_derivatives'][100:]
+    data['sim_steps'] = data['sim_steps'][100:]
+
+    return data
 
 
-def create_comparison_plots(file1_data, file2_data, file1_name, file2_name, save_plots=False, output_filename=None):
-    """
-    Create comparison plots for returns, model derivatives, and sim steps from two files.
+def plot_data(file_paths, step_size=2):
+    """Create plots comparing metrics from multiple files.
 
     Args:
-        file1_data (tuple): (returns, model_derivatives, sim_steps) from first file
-        file2_data (tuple): (returns, model_derivatives, sim_steps) from second file
-        file1_name (str): Name/label for first file
-        file2_name (str): Name/label for second file
-        save_plots (bool): Whether to save plots to files
-        output_filename (str): Custom filename for saved plot (without extension)
+        file_paths: List of file paths to plot
+        step_size: Plot every Nth point (default=2 for every other point)
     """
-    returns1, derivatives1, sim_steps1 = file1_data
-    returns2, derivatives2, sim_steps2 = file2_data
 
-    if not (returns1 and derivatives1 and returns2 and derivatives2):
-        print("Insufficient data to create comparison plots.")
-        return
+    # Parse all files
+    all_data = {}
+    legends = []
 
-    # Determine if we have sim steps data
-    has_sim_steps = len(sim_steps2) > 0  # Assuming file2 has the sim steps data
+    for filepath in file_paths:
+        # Create legend name by removing .out extension
+        legend_name = filepath.replace('.out', '')
+        legends.append(legend_name)
+        all_data[legend_name] = parse_file(filepath)
+        if len(all_data[legend_name]['sim_steps'])==0:
+            for i in range(len( all_data[legend_name]['return'])):
+                all_data[legend_name]['sim_steps'].append(2487)
 
-    # Create iteration indices
-    iterations1_returns = list(range(1, len(returns1) + 1))
-    iterations2_returns = list(range(1, len(returns2) + 1))
-    iterations1_derivatives = list(range(1, len(derivatives1) + 1))
-    iterations2_derivatives = list(range(1, len(derivatives2) + 1))
+    # Create figure with 3 subplots - long and narrow for paper
+    fig, axes = plt.subplots(3, 1, figsize=(12, 6), sharex=True)  # sharex=True to share x-axis
 
-    # Create figure with appropriate number of subplots
-    if has_sim_steps:
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(14, 16))
-        iterations2_sim_steps = list(range(1, len(sim_steps2) + 1))
-    else:
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 12))
+    # Define colors for each file
+    colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown']
 
-    # Plot 1: Returns Comparison
-    ax1.plot(iterations1_returns, returns1, 'b-', linewidth=1.5, alpha=0.8, label=file1_name)
-    ax1.plot(iterations2_returns, returns2, 'r-', linewidth=1.5, alpha=0.8, label=file2_name)
-    ax1.set_title('Return Values Comparison Over Iterations', fontsize=16, fontweight='bold')
-    ax1.set_xlabel('Iteration', fontsize=12)
-    ax1.set_ylabel('Return', fontsize=12)
+    # Plot 1: Return values (now labeled as Cost)
+    ax1 = axes[0]
+    for i, (legend_name, data) in enumerate(all_data.items()):
+        if data['return']:
+            # Plot every Nth point based on step_size
+            iterations = range(1, len(data['return']) + 1, step_size)
+            values = data['return'][::step_size]
+            if i >3:
+                ax1.plot(iterations, values,
+                     label=legend_name, color=colors[i % len(colors)], linestyle=':',
+                     linewidth=2, alpha=0.8)
+            else:
+                ax1.plot(iterations, values,
+                         label=legend_name, color=colors[i % len(colors)],
+                         linewidth=2, alpha=0.8)
+
+    ax1.set_ylabel('Cost')
     ax1.grid(True, alpha=0.3)
-    ax1.legend(fontsize=11)
+    # Set at least 4 ticks on y-axis
+    ax1.yaxis.set_major_locator(MaxNLocator(nbins=5, min_n_ticks=4))
+    ax1.tick_params(axis='y', which='major', width=1.5, length=6)
+    # Make y-axis tick labels bold
+    for label in ax1.get_yticklabels():
+        label.set_weight('bold')
 
-    # Add mean lines for returns
-    mean_return1 = np.mean(returns1)
-    mean_return2 = np.mean(returns2)
-    ax1.axhline(y=mean_return1, color='b', linestyle='--', alpha=0.6,
-                label=f'{file1_name} Mean: {mean_return1:.4f}')
-    ax1.axhline(y=mean_return2, color='r', linestyle='--', alpha=0.6,
-                label=f'{file2_name} Mean: {mean_return2:.4f}')
-    ax1.legend(fontsize=10)
+    # Plot 2: Model derivatives (in milliseconds)
+    ax2 = axes[1]
+    for i, (legend_name, data) in enumerate(all_data.items()):
+        if data['model_derivatives']:
+            # Plot every Nth point based on step_size
+            iterations = range(1, len(data['model_derivatives']) + 1, step_size)
+            values = data['model_derivatives'][::step_size]
+            if i >3:
+                ax2.plot(iterations, values,
+                         label=legend_name, color=colors[i % len(colors)], linestyle=':',
+                         linewidth=2, alpha=0.8)
+            else:
+                ax2.plot(iterations, values,
+                         label=legend_name, color=colors[i % len(colors)],
+                         linewidth=2, alpha=0.8)
 
-    # Set x-axis limits for returns plot
-    max_iterations_returns = max(len(returns1), len(returns2))
-    ax1.set_xlim(1, max_iterations_returns)
-
-    # Plot 2: Model Derivatives Comparison
-    ax2.plot(iterations1_derivatives, derivatives1, 'g-', linewidth=1.5, alpha=0.8, label=file1_name)
-    ax2.plot(iterations2_derivatives, derivatives2, 'm-', linewidth=1.5, alpha=0.8, label=file2_name)
-    ax2.set_title('Model Derivative Time Comparison Over Iterations', fontsize=16, fontweight='bold')
-    ax2.set_xlabel('Iteration', fontsize=12)
-    ax2.set_ylabel('Model Derivative (ms)', fontsize=12)
+    ax2.set_ylabel('Time (ms)')
     ax2.grid(True, alpha=0.3)
-    ax2.legend(fontsize=11)
+    # Set y-axis to start from 0
+    y_min, y_max = ax2.get_ylim()
+    ax2.set_ylim(0, y_max)
+    # Set at least 4 ticks on y-axis including 0
+    ax2.yaxis.set_major_locator(MaxNLocator(nbins=5, min_n_ticks=4, prune='upper'))
+    ax2.tick_params(axis='y', which='major', width=1.5, length=6)
+    # Make y-axis tick labels bold
+    for label in ax2.get_yticklabels():
+        label.set_weight('bold')
 
-    # Add mean lines for derivatives
-    mean_derivative1 = np.mean(derivatives1)
-    mean_derivative2 = np.mean(derivatives2)
-    ax2.axhline(y=mean_derivative1, color='g', linestyle='--', alpha=0.6,
-                label=f'{file1_name} Mean: {mean_derivative1:.2f} ms')
-    ax2.axhline(y=mean_derivative2, color='m', linestyle='--', alpha=0.6,
-                label=f'{file2_name} Mean: {mean_derivative2:.2f} ms')
-    ax2.legend(fontsize=10)
+    # Plot 3: Number of simulation steps
+    ax3 = axes[2]
+    for i, (legend_name, data) in enumerate(all_data.items()):
+        if data['sim_steps']:  # Only plot if data exists (FD.out won't have this)
+            # Plot every Nth point based on step_size
+            iterations = range(1, len(data['sim_steps']) + 1, step_size)
+            values = data['sim_steps'][::step_size]
+            if i >3:
+                ax3.plot(iterations, values,
+                         label=legend_name, color=colors[i % len(colors)], linestyle=':',
+                         linewidth=2, alpha=0.8)
+            else:
+                ax3.plot(iterations, values,
+                         label=legend_name, color=colors[i % len(colors)],
+                         linewidth=2, alpha=0.8)
 
-    # Set x-axis limits for derivatives plot
-    max_iterations_derivatives = max(len(derivatives1), len(derivatives2))
-    ax2.set_xlim(1, max_iterations_derivatives)
+    ax3.set_xlabel('Iteration', )
+    ax3.set_ylabel('# Sim. Steps')
+    ax3.grid(True, alpha=0.3)
+    # Set x-axis limits starting from 0
+    ax3.set_xlim(0, 1000)
+    # Force specific x-axis ticks including 0
+    ax3.set_xticks([0, 200, 400, 600, 800, 1000])
+    # Set at least 4 ticks on y-axis
+    ax3.yaxis.set_major_locator(MaxNLocator(nbins=5, min_n_ticks=4, integer=True))
+    ax3.tick_params(axis='both', which='major', width=1.5, length=6)
+    # Make tick labels bold
+    for label in ax3.get_xticklabels() + ax3.get_yticklabels():
+        label.set_weight('bold')
 
-    # Plot 3: Simulation Steps (only for file2 if available)
-    if has_sim_steps:
-        ax3.plot(iterations2_sim_steps, sim_steps2, 'orange', linewidth=1.5, alpha=0.8, label=file2_name)
-        ax3.set_title('Number of Simulation Steps in Model Derivative Over Iterations', fontsize=16, fontweight='bold')
-        ax3.set_xlabel('Iteration', fontsize=12)
-        ax3.set_ylabel('Number of Sim Steps', fontsize=12)
-        ax3.grid(True, alpha=0.3)
-        ax3.legend(fontsize=11)
+    # Add a single horizontal legend at the bottom of the figure
+    handles, labels = ax1.get_legend_handles_labels()
+    fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, -0.05),
+               ncol=len(labels), prop={'weight': 'bold'})
 
-        # Add mean line for sim steps
-        mean_sim_steps = np.mean(sim_steps2)
-        ax3.axhline(y=mean_sim_steps, color='orange', linestyle='--', alpha=0.6,
-                    label=f'{file2_name} Mean: {mean_sim_steps:.0f} steps')
-        ax3.legend(fontsize=10)
-        ax3.set_xlim(1, len(sim_steps2))
-
-    # Adjust layout to prevent overlap
+    # Adjust layout to prevent overlap and make room for legend
     plt.tight_layout()
+    plt.subplots_adjust(bottom=0.15)  # Make room for the bottom legend
 
-    # Save plots if requested
-    if save_plots:
-        if output_filename:
-            filename = f"{output_filename}.png"
-        else:
-            filename = 'comparison_plots_with_simsteps.png' if has_sim_steps else 'comparison_plots.png'
-        plt.savefig(filename, dpi=300, bbox_inches='tight')
-        print(f"Comparison plots saved as '{filename}'")
+    # Save the figure as PDF for paper-ready output
+    plt.savefig('teaser.pdf', dpi=300, bbox_inches='tight', format='pdf')
+    print("\nPlot saved as 'parameter_tuning.pdf'")
 
-    # Show the plots
+    # Show the plot
     plt.show()
 
     # Print summary statistics
-    print("\n" + "=" * 60)
-    print("COMPARISON SUMMARY STATISTICS")
-    print("=" * 60)
+    print(f"\n=== Summary Statistics (plotting every {step_size} iterations) ===\n")
+    for legend_name, data in all_data.items():
+        print(f"\n{legend_name}:")
+        if data['return']:
+            print(f"  Cost - Min: {min(data['return']):.6f}, "
+                  f"Max: {max(data['return']):.6f}, "
+                  f"Mean: {np.mean(data['return']):.6f}, "
+                  f"Final: {data['return'][-1]:.6f}")
+        if data['model_derivatives']:
+            print(f"  Model Derivatives (ms) - Mean: {np.mean(data['model_derivatives']):.3f}, "
+                  f"Std: {np.std(data['model_derivatives']):.3f}")
+        if data['sim_steps']:
+            print(f"  Sim Steps - Mean: {np.mean(data['sim_steps']):.1f}, "
+                  f"Std: {np.std(data['sim_steps']):.1f}")
 
-    print(f"\n{file1_name.upper()} - RETURNS:")
-    print(f"  Count: {len(returns1)}")
-    print(f"  Mean: {mean_return1:.6f}")
-    print(f"  Std: {np.std(returns1):.6f}")
-    print(f"  Min: {min(returns1):.6f}")
-    print(f"  Max: {max(returns1):.6f}")
-
-    print(f"\n{file2_name.upper()} - RETURNS:")
-    print(f"  Count: {len(returns2)}")
-    print(f"  Mean: {mean_return2:.6f}")
-    print(f"  Std: {np.std(returns2):.6f}")
-    print(f"  Min: {min(returns2):.6f}")
-    print(f"  Max: {max(returns2):.6f}")
-
-    print(f"\n{file1_name.upper()} - MODEL DERIVATIVE (ms):")
-    print(f"  Count: {len(derivatives1)}")
-    print(f"  Mean: {mean_derivative1:.2f}")
-    print(f"  Std: {np.std(derivatives1):.2f}")
-    print(f"  Min: {min(derivatives1):.2f}")
-    print(f"  Max: {max(derivatives1):.2f}")
-
-    print(f"\n{file2_name.upper()} - MODEL DERIVATIVE (ms):")
-    print(f"  Count: {len(derivatives2)}")
-    print(f"  Mean: {mean_derivative2:.2f}")
-    print(f"  Std: {np.std(derivatives2):.2f}")
-    print(f"  Min: {min(derivatives2):.2f}")
-    print(f"  Max: {max(derivatives2):.2f}")
-
-    # Print sim steps statistics if available
-    if has_sim_steps:
-        print(f"\n{file2_name.upper()} - SIMULATION STEPS:")
-        print(f"  Count: {len(sim_steps2)}")
-        print(f"  Mean: {mean_sim_steps:.0f}")
-        print(f"  Std: {np.std(sim_steps2):.0f}")
-        print(f"  Min: {min(sim_steps2)}")
-        print(f"  Max: {max(sim_steps2)}")
-
-    # Print comparison insights
-    print("\n" + "=" * 60)
-    print("COMPARISON INSIGHTS")
-    print("=" * 60)
-
-    return_diff = mean_return2 - mean_return1
-    derivative_diff = mean_derivative2 - mean_derivative1
-
-    print(f"\nReturn Difference ({file2_name} - {file1_name}): {return_diff:+.6f}")
-    if abs(return_diff) > 0.001:
-        better_return = file2_name if return_diff > 0 else file1_name
-        print(f"  → {better_return} has better average returns")
-    else:
-        print("  → Returns are very similar")
-
-    print(f"\nDerivative Time Difference ({file2_name} - {file1_name}): {derivative_diff:+.2f} ms")
-    if abs(derivative_diff) > 5:
-        faster_method = file1_name if derivative_diff > 0 else file2_name
-        print(f"  → {faster_method} is faster on average")
-    else:
-        print("  → Computation times are similar")
-
-    if has_sim_steps:
-        print(f"\nAverage Simulation Steps ({file2_name}): {mean_sim_steps:.0f}")
-        if mean_sim_steps > 1000:
-            print("  → High number of simulation steps")
-        elif mean_sim_steps < 100:
-            print("  → Low number of simulation steps")
-        else:
-            print("  → Moderate number of simulation steps")
+    # Print overall averages across all iterations
+    print("\n=== Overall Averages Across All Iterations ===\n")
+    for legend_name, data in all_data.items():
+        print(f"\n{legend_name}:")
+        if data['return']:
+            print(f"  Average Cost: {np.mean(data['return']):.6f}")
+        if data['model_derivatives']:
+            print(f"  Average Model Derivatives (ms): {np.mean(data['model_derivatives']):.3f}")
+        if data['sim_steps']:
+            print(f"  Average Sim Steps: {np.mean(data['sim_steps']):.1f}")
 
 
-def get_file_display_name(file_path):
-    """
-    Extract a display name from file path (without extension).
-    """
-    return os.path.splitext(os.path.basename(file_path))[0]
-
-
-def main():
-    """
-    Main function to run the data processing and comparison plotting.
-    """
-    # Specify the paths to your data files
-    file1_path = 'fd.out'  # First file (without sim steps)
-    file2_path = 'low_mem.out'  # Second file (with sim steps)
-
-    # Specify custom output filename (without extension) - set to None for default naming
-    output_filename = 'low_mem'  # Change this to your desired filename, or set to None
-
-    # Get display names for the files
-    file1_name = get_file_display_name(file1_path)
-    file2_name = get_file_display_name(file2_path)
-
-    print("Parsing data files...")
-
-    # Parse both files - file2 has simulation steps data
-    file1_data = parse_data(file1_path, has_sim_steps=False)
-    file2_data = parse_data(file2_path, has_sim_steps=True)
-
-    # Check if both files were parsed successfully
-    if (file1_data[0] and file1_data[1] and file2_data[0] and file2_data[1]):
-        print("Creating comparison plots...")
-        create_comparison_plots(file1_data, file2_data, file1_name, file2_name,
-                                save_plots=True, output_filename=output_filename)
-    else:
-        print("Failed to parse one or both data files. Please check your file paths and formats.")
-        if not (file1_data[0] and file1_data[1]):
-            print(f"  - Issue with {file1_path}")
-        if not (file2_data[0] and file2_data[1]):
-            print(f"  - Issue with {file2_path}")
-
-
+# Main execution
 if __name__ == "__main__":
-    main()
+    # Define file paths
+    file_paths = [
+       'climb_fd.out',
+        'climb_wasp.out',
+    ]
+
+    # Create plots with customizable step size
+    step_size = 2 # Change this value: 1=all points, 2=every other, 5=every 5th, 10=every 10th, etc.
+    plot_data(file_paths, step_size=step_size)
