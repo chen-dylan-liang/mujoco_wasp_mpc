@@ -12,6 +12,8 @@
     <numeric name="sampling_exploration" data="0.05" />
     <numeric name="gradient_spline_points" data="5" />
     <numeric name="residual_Height Goal" data="1.4 0.0 1.5" />
+    <numeric name="log_planning_data" data="1" />
+    <numeric name="max_planning_iterations" data="10000" />
   </custom>
 
   <sensor>

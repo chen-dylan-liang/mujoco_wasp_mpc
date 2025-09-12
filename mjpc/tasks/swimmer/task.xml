@@ -13,6 +13,8 @@
     <numeric name="sampling_spline_points" data="10" />
     <numeric name="sampling_exploration" data="0.05" />
     <numeric name="gradient_spline_points" data="10" />
+    <numeric name="log_planning_data" data="1" />
+    <numeric name="max_planning_iterations" data="5000" />
 
     <!-- estimator -->
     <numeric name="estimator" data="0" />

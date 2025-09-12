@@ -366,6 +366,10 @@ void Agent::Plan(std::atomic<bool>& exitrequest,
                  std::atomic<int>& uiloadrequest) {
   // instantiate thread pool
   ThreadPool pool(planner_threads_);
+  for (auto& planner: planners_) {
+    planner->log =  log_planning_data;
+    planner->log_file = &out_stream;
+  }
 
   // main loop
   while (!exitrequest.load()) {
@@ -373,7 +377,7 @@ void Agent::Plan(std::atomic<bool>& exitrequest,
       PlanIteration(&pool);
     }
     if (max_plan_iters>0 && count_ >= max_plan_iters) {
-      ActivePlanner().log_file.close();
+      ActivePlanner().log_file->close();
       exitrequest.store(true);
     }
   }  // exitrequest sent -- stop planning

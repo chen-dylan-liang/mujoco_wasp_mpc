@@ -115,8 +115,8 @@ namespace mjpc {
         friend class iLQGPlanner;
         double x_eps=0.5;
         double u_eps=0.5;
-        double x_frac_wasp=0.5;
-        double u_frac_wasp=0.3;
+        double x_frac_wasp=0.8;
+        double u_frac_wasp=0.5;
         std::atomic<int> num_dynamics_called;
 
         std::vector<double> AT, BT, CT, DT;

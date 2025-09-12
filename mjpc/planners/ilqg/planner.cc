@@ -267,12 +267,12 @@ namespace mjpc {
             {mjITEM_SLIDERINT, "Deriv. Skip", 2, &derivative_skip_, "0 16"},
             {mjITEM_CHECKINT, "Terminal Print", 2, &settings.verbose, ""},
             {mjITEM_SELECT, "MD Engine", 2, &md_engine, "FD\nWASP\n"},
-{mjITEM_SLIDERNUM, "WASP x_frac", 2, &(wasp_md.x_frac_wasp), "0 1"},
-{mjITEM_SLIDERNUM, "WASP u_frac", 2, &(wasp_md.u_frac_wasp), "0 1"},
-            {mjITEM_SLIDERNUM, "WASP x_eps", 2, &(wasp_md.x_eps), "0 1"},
-            {mjITEM_SLIDERNUM, "WASP u_eps", 2, &(wasp_md.u_eps), "0 1"},
+{mjITEM_SLIDERNUM, "WASP frac_s", 2, &(wasp_md.x_frac_wasp), "0 1"},
+{mjITEM_SLIDERNUM, "WASP frac_u", 2, &(wasp_md.u_frac_wasp), "0 1"},
+            {mjITEM_SLIDERNUM, "WASP tol_s", 2, &(wasp_md.x_eps), "0 1"},
+            {mjITEM_SLIDERNUM, "WASP tol_uf", 2, &(wasp_md.u_eps), "0 1"},
 //{mjITEM_SLIDERNUM, "WASP T_eps", 2, &(wasp_md.T_eps), "0 1"},
-{mjITEM_SELECT, "rollout wasp", 2, &(wasp_md.cache_rollout), "0\n1\n"},
+//{mjITEM_SELECT, "rollout wasp", 2, &(wasp_md.cache_rollout), "0\n1\n"},
             {mjITEM_END}
         };
 
@@ -654,13 +654,19 @@ namespace mjpc {
         policy_update_compute_time = policy_update_time;
 
         if (log) {
-            log_file << "  return: " << previous_return << '\n';
-            log_file<< "  improved return by planner: " << trajectory[winner].total_return << '\n';
-            log_file << "  linesearch step size: " << action_step << '\n';
-            if (model_derivative == &wasp_md) log_file << "  number of sim. steps in model derivative: "<<wasp_md.num_dynamics_called << '\n';
-            log_file << "  improvement: " << improvement << '\n';
-            log_file << "  model derivative (ms): "<< model_derivative_compute_time * 1.0e-3 << '\n';
-            log_file << "\n\n";
+            *log_file << "  return: " << previous_return << '\n';
+            *log_file<< "  improved return by planner: " << trajectory[winner].total_return << '\n';
+            *log_file << "  linesearch step size: " << action_step << '\n';
+            if (model_derivative == &wasp_md) *log_file << "  number of sim. steps in model derivative: "<<wasp_md.num_dynamics_called << '\n';
+            *log_file << "  improvement: " << improvement << '\n';
+            *log_file<< "  model derivatives: "
+                     << model_derivative_compute_time * 1.0e-3 << '\n';
+           *log_file << "  cost derivatives: " << cost_derivative_compute_time * 1.0e-3
+                    << '\n';
+           *log_file << "  solver step: " << backward_pass_compute_time * 1.0e-3
+                    << '\n';
+         *log_file << "  line search: " << rollouts_compute_time * 1.0e-3 << '\n';
+            *log_file << "\n\n";
         }
     }
 

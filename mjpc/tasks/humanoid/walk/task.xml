@@ -13,6 +13,8 @@
     <numeric name="gradient_spline_points" data="5" />
     <numeric name="residual_Torso" data="1.35 1.0 1.7" />
     <numeric name="residual_Speed" data="0.5 -3.0 3.0" />
+    <numeric name="log_planning_data" data="1" />
+    <numeric name="max_planning_iterations" data="10000" />
 
     <!-- estimator -->
     <numeric name="estimator" data="0" />

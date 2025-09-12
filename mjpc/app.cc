@@ -470,8 +470,7 @@ void MjpcApp::Start() {
   printf("  Estimator      :  %i\n", sim->agent->estimator_threads());
   printf("    estimation   :  %i\n", sim->agent->estimator_enabled);
   printf("    planning steps   :  %i\n", sim->agent->max_plan_iters);
-  sim->agent->ActivePlanner().log_file = std::ofstream(sim->filename+".out");
-  sim->agent->ActivePlanner().log = sim->agent->log_planning_data;
+  sim->agent->out_stream = std::ofstream(sim->filename+".out");
 
 
   // set control callback

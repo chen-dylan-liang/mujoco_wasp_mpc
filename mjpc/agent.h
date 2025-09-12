@@ -189,6 +189,7 @@ class Agent {
   bool estimator_enabled = false;
   int max_plan_iters = -1;
   int log_planning_data = 0;
+  std::ofstream out_stream;
   //std::ofstream output_file;
 
  private:

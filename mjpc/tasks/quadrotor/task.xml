@@ -23,6 +23,8 @@
     <numeric name="sampling_representation" data="2"/>
     <numeric name="sampling_trajectories" data="32"/>
     <numeric name="gradient_spline_points" data="5"/>
+    <numeric name="log_planning_data" data="1" />
+    <numeric name="max_planning_iterations" data="10000" />
   </custom>
 
   <worldbody>

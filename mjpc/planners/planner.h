@@ -80,7 +80,7 @@ class Planner {
 
   int log=0;
 
-  std::ofstream log_file;
+  std::ofstream* log_file;
 
 };
 

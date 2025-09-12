@@ -8,7 +8,7 @@
     <text name="task_transition" data="Quadruped|Biped|Walk|Scramble|Flip" />
     <numeric name="agent_planner" data="2 " />
     <numeric name="agent_horizon" data="0.5" />
-    <numeric name="max_planning_iterations" data="500" />
+    <numeric name="max_planning_iterations" data="1100" />
     <numeric name="agent_timestep" data="0.01" />
     <numeric name="sampling_spline_points" data="3" />
     <numeric name="sampling_trajectories" data="60"/>
@@ -60,7 +60,7 @@
       <body name="box" mocap="true" pos="-2.5 0 0">
         <geom name="box" class="prop" size="1 1 0.3"/>
       </body>
-      <geom name="ramp" class="prop" pos="3.13 2.5 -.18" size="1.6 1 .5" euler="0 -0.2 0"/>
+      <geom name="ramp" class="prop" pos="2 0 -.18" size="6 1 .5" euler="0 -0.2 0"/>
       <geom name="hill" class="prop" pos="6 6 -5.5" size="6" type="sphere"/>
   </worldbody>
 

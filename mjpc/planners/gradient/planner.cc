@@ -340,6 +340,20 @@ namespace mjpc {
     rollouts_compute_time = rollouts_time;
     gradient_compute_time = gradient_time;
     policy_update_compute_time = policy_update_time;
+    if (log) {
+      *log_file<< "  improved return by planner: " << trajectory[winner].total_return << '\n';
+      *log_file << "  linesearch step size: " << action_step << '\n';
+      if (model_derivative == &wasp_md) *log_file << "  number of sim. steps in model derivative: "<<wasp_md.num_dynamics_called << '\n';
+      *log_file << "  improvement: " << improvement << '\n';
+      *log_file<< "  model derivatives: "
+               << model_derivative_compute_time * 1.0e-3 << '\n';
+      *log_file << "  cost derivatives: " << cost_derivative_compute_time * 1.0e-3
+               << '\n';
+      *log_file << "  solver step: " << gradient_time * 1.0e-3
+               << '\n';
+      *log_file << "  line search: " << rollouts_compute_time * 1.0e-3 << '\n';
+      *log_file << "\n\n";
+    }
   }
 
   // compute trajectory using nominal policy
@@ -488,12 +502,12 @@ namespace mjpc {
       },
       {mjITEM_SLIDERINT, "Spline Pts", 2, &policy.num_spline_points, "0 1"},
       {mjITEM_SLIDERINT, "Deriv. Skip", 2, &derivative_skip_, "0 16"},
-      {mjITEM_SELECT, "MD Engine", 2, &md_engine, "FD\nWASP\n"},
-{mjITEM_SLIDERNUM, "WASP x_frac", 2, &(wasp_md.x_frac_wasp), "0 1"},
-{mjITEM_SLIDERNUM, "WASP u_frac", 2, &(wasp_md.u_frac_wasp), "0 1"},
-{mjITEM_SLIDERNUM, "WASP x_eps", 2, &(wasp_md.x_eps), "0 1"},
-            {mjITEM_SLIDERNUM, "WASP u_eps", 2, &(wasp_md.u_eps), "0 1"},
-{mjITEM_SELECT, "rollout wasp cache", 2, &(wasp_md.cache_rollout), "0 1"},
+{mjITEM_SELECT, "MD Engine", 2, &md_engine, "FD\nWASP\n"},
+{mjITEM_SLIDERNUM, "WASP frac_s", 2, &(wasp_md.x_frac_wasp), "0 1"},
+{mjITEM_SLIDERNUM, "WASP frac_u", 2, &(wasp_md.u_frac_wasp), "0 1"},
+      {mjITEM_SLIDERNUM, "WASP tol_s", 2, &(wasp_md.x_eps), "0 1"},
+      {mjITEM_SLIDERNUM, "WASP tol_uf", 2, &(wasp_md.u_eps), "0 1"},
+//{mjITEM_SELECT, "rollout wasp cache", 2, &(wasp_md.cache_rollout), "0 1"},
       {mjITEM_END}
     };
 
