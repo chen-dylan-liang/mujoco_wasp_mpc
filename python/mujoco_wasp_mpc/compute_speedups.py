@@ -9,33 +9,37 @@ import numpy as np
 from typing import List, Dict, Tuple
 
 
-def parse_file(filepath: str) -> Tuple[List[float], List[float]]:
+def parse_file(filepath: str, extract_sim_steps: bool = False) -> Tuple[List[float], List[float], List[float]]:
     """
-    Parse a file and extract 'return' and 'model derivatives' values.
+    Parse a file and extract 'return', 'model derivatives', and optionally 'sim steps' values.
 
     Args:
         filepath: Path to the input file
+        extract_sim_steps: Whether to extract simulation steps data
 
     Returns:
-        Tuple of (returns_list, model_derivatives_list)
+        Tuple of (returns_list, model_derivatives_list, sim_steps_list)
     """
     returns = []
     model_derivatives = []
+    sim_steps = []
 
     try:
         with open(filepath, 'r') as f:
             content = f.read()
     except FileNotFoundError:
         print(f"Error: File '{filepath}' not found.")
-        return [], []
+        return [], [], []
     except Exception as e:
         print(f"Error reading file '{filepath}': {e}")
-        return [], []
+        return [], [], []
 
     # Pattern to match "return: <number>" (the actual return value)
-    return_pattern = r'^\s*return:\s*([\d.]+)'# r'improved return by planner:\s*([\d.]+)'#r'^\s*return:\s*([\d.]+)'
+    return_pattern = r'^\s*return:\s*([\d.]+)'  # r'improved return by planner:\s*([\d.]+)'#r'^\s*return:\s*([\d.]+)'
     # Pattern to match "model derivatives: <number>"
     derivatives_pattern = r'model derivatives:\s*([\d.]+)'
+    # Pattern to match "number of sim. steps in model derivative: <number>"
+    sim_steps_pattern = r'number of sim\. steps in model derivative:\s*([\d.]+)'
 
     # Find all matches
     return_matches = re.findall(return_pattern, content, re.MULTILINE)
@@ -45,12 +49,19 @@ def parse_file(filepath: str) -> Tuple[List[float], List[float]]:
     returns = [float(val) for val in return_matches]
     model_derivatives = [float(val) for val in derivatives_matches]
 
+    # Extract sim steps if requested
+    if extract_sim_steps:
+        sim_steps_matches = re.findall(sim_steps_pattern, content)
+        sim_steps = [float(val) for val in sim_steps_matches]
+        if len(sim_steps) == 0:
+            print(f"Warning: No 'number of sim. steps in model derivative' values found in {filepath}")
+
     if len(returns) == 0:
         print(f"Warning: No 'return' values found in {filepath}")
     if len(model_derivatives) == 0:
         print(f"Warning: No 'model derivatives' values found in {filepath}")
 
-    return returns[:], model_derivatives[:]
+    return returns[:], model_derivatives[:], sim_steps[:]
 
 
 def compute_metrics(file1_path: str, file2_path: str) -> Dict[str, float]:
@@ -68,16 +79,17 @@ def compute_metrics(file1_path: str, file2_path: str) -> Dict[str, float]:
         Dictionary with computed metrics
     """
     print(f"Reading file 1: {file1_path}")
-    returns1, derivatives1 = parse_file(file1_path)
+    returns1, derivatives1, _ = parse_file(file1_path, extract_sim_steps=False)
 
     print(f"Reading file 2: {file2_path}")
-    returns2, derivatives2 = parse_file(file2_path)
+    returns2, derivatives2, sim_steps2 = parse_file(file2_path, extract_sim_steps=True)
 
     # Calculate averages
     avg_return1 = sum(returns1) / len(returns1) if returns1 else 0
     avg_return2 = sum(returns2) / len(returns2) if returns2 else 0
     avg_derivatives1 = sum(derivatives1) / len(derivatives1) if derivatives1 else 0
     avg_derivatives2 = sum(derivatives2) / len(derivatives2) if derivatives2 else 0
+    avg_sim_steps2 = sum(sim_steps2) / len(sim_steps2) if sim_steps2 else 0
 
     # Compute metrics
     speedup = avg_derivatives1 / avg_derivatives2 if avg_derivatives2 != 0 else float('inf')
@@ -114,6 +126,8 @@ def compute_metrics(file1_path: str, file2_path: str) -> Dict[str, float]:
         'avg_return_file2': avg_return2,
         'avg_derivatives_file1': avg_derivatives1,
         'avg_derivatives_file2': avg_derivatives2,
+        'avg_sim_steps_file2': avg_sim_steps2,
+        'num_sim_steps_entries': len(sim_steps2),
         'speedup': speedup,
         'performance_loss': performance_loss,
         'num_iterations_file1': len(returns1),
@@ -129,8 +143,8 @@ def main():
     # ============================================================
     # CONFIGURE YOUR FILE PATHS HERE
     # ============================================================
-    FILE1_PATH = "climb_fd.out" # Change this to your first file path
-    FILE2_PATH = "climb_wasp.out"  # Change this to your second file path
+    FILE1_PATH = "swimmer_ilqg_fd.out"  # Change this to your first file path
+    FILE2_PATH = "humanoid_walk_wasp.out"  # Change this to your second file path
     # ============================================================
 
     print("=" * 60)
@@ -152,6 +166,9 @@ def main():
     print(f"  - Number of iterations: {metrics['num_iterations_file2']}")
     print(f"  - Average return: {metrics['avg_return_file2']:.6f}")
     print(f"  - Average model derivatives: {metrics['avg_derivatives_file2']:.3f}")
+    if metrics['num_sim_steps_entries'] > 0:
+        print(f"  - Average sim. steps in model derivative: {metrics['avg_sim_steps_file2']:.2f}")
+        print(f"    (from {metrics['num_sim_steps_entries']} entries)")
 
     print("\n" + "-" * 60)
     print("COMPUTED METRICS")

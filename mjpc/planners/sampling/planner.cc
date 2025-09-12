@@ -195,7 +195,9 @@ int SamplingPlanner::OptimizePolicyCandidates(int ncandidates, int horizon,
 
 // optimize nominal policy using random sampling
 void SamplingPlanner::OptimizePolicy(int horizon, ThreadPool& pool) {
+  auto optimize_start = std::chrono::steady_clock::now();
   OptimizePolicyCandidates(1, horizon, pool);
+
 
   // ----- update policy ----- //
   // start timer
@@ -205,10 +207,17 @@ void SamplingPlanner::OptimizePolicy(int horizon, ThreadPool& pool) {
 
   // improvement: compare nominal to winner
   double best_return = trajectory[0].total_return;
+  double improved_return = trajectory[winner].total_return;
   improvement = mju_max(best_return - trajectory[winner].total_return, 0.0);
 
   // stop timer
   policy_update_compute_time = GetDuration(policy_update_start);
+  double solver_time = GetDuration(optimize_start);
+  if (log) {
+    *log_file << "  improved return by planner: " << improved_return << '\n';
+    *log_file << "  solver time: " << solver_time * 1.0e-3
+              << '\n';
+  }
 }
 
 // compute trajectory using nominal policy

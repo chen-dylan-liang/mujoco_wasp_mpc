@@ -166,6 +166,7 @@ void CrossEntropyPlanner::SetState(const State& state) {
 
 // optimize nominal policy using random sampling
 void CrossEntropyPlanner::OptimizePolicy(int horizon, ThreadPool& pool) {
+  auto optimize_start = std::chrono::steady_clock::now();
   resampled_policy.plan.SetInterpolation(interpolation_);
 
   // if num_trajectory_ has changed, use it in this new iteration.
@@ -288,6 +289,13 @@ void CrossEntropyPlanner::OptimizePolicy(int horizon, ThreadPool& pool) {
 
   // stop timer
   policy_update_compute_time = GetDuration(policy_update_start);
+  double solver_time = GetDuration(optimize_start);
+  // print out
+  if (log) {
+    *log_file << "  improved return by planner: " << trajectory[trajectory_order[0]].total_return << '\n';
+    *log_file << "  solver time: " << solver_time * 1.0e-3
+              << '\n';
+  }
 }
 
 // compute trajectory using nominal policy

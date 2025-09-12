@@ -167,6 +167,7 @@ void SampleGradientPlanner::SetState(const State& state) {
 
 // optimize nominal policy using random sampling and gradient search
 void SampleGradientPlanner::OptimizePolicy(int horizon, ThreadPool& pool) {
+  auto optimize_start = std::chrono::steady_clock::now();
   // if num_trajectory_ has changed, use it in this new iteration.
   // num_trajectory_ might change while this function runs. Keep it constant
   // for the duration of this function.
@@ -254,6 +255,7 @@ void SampleGradientPlanner::OptimizePolicy(int horizon, ThreadPool& pool) {
   }
 
   // improvement: compare nominal to winner
+  double best_return  = trajectory[winner].total_return;
   improvement = mju_max(
       trajectory[idx_nominal].total_return - trajectory[winner].total_return,
       0.0);
@@ -270,6 +272,14 @@ void SampleGradientPlanner::OptimizePolicy(int horizon, ThreadPool& pool) {
 
   // stop timer
   gradient_candidates_compute_time = GetDuration(gradient_start);
+
+  // print out
+  double solver_time = GetDuration(optimize_start);
+  if (log) {
+    *log_file << "  improved return by planner: " << best_return << '\n';
+    *log_file << "  solver time: " << solver_time * 1.0e-3
+              << '\n';
+  }
 }
 
 // compute trajectory using nominal policy

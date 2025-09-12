@@ -89,6 +89,7 @@ void RobustPlanner::SetState(const State& state) {
 }
 
 void RobustPlanner::OptimizePolicy(int horizon, ThreadPool& pool) {
+  auto optimize_start = std::chrono::steady_clock::now();
   // get the best N candidates
   int ncandidates =
       delegate_->OptimizePolicyCandidates(ncandidates_, horizon, pool);
@@ -154,6 +155,13 @@ void RobustPlanner::OptimizePolicy(int horizon, ThreadPool& pool) {
   }
 
   delegate_->CopyCandidateToPolicy(best_candidate);
+  double solver_time = GetDuration(optimize_start);
+  // print out
+  if (log) {
+    *log_file << "  improved return by planner: " << best_score << '\n';
+    *log_file << "  solver time: " << solver_time * 1.0e-3
+              << '\n';
+  }
 }
 
 void RobustPlanner::NominalTrajectory(int horizon, ThreadPool& pool) {
