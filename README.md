@@ -58,7 +58,7 @@ Both planners allocate and maintain:
 
 At runtime, users can switch derivative engines through GUI controls (`MD Engine: FD/WASP`) without modifying task code. WASP tuning parameters are also exposed in GUI (e.g., WASP fractions/tolerances), enabling practical and transparent comparison between FD and WASP during experiments.
 
-## Why This Engineering Is Non-Trivial
+## Engineering Character
 
 The integration challenge is not only replacing one derivative routine with another. It requires:
 
