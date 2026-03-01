@@ -1,261 +1,70 @@
-q<h1>
-  <a href="#"><img alt="MuJoCo MPC" src="docs/assets/banner.png" width="100%"></a>
-</h1>
+# mujoco_wasp_mpc
 
-<p>
-  <a href="https://github.com/google-deepmind/mujoco_mpc/actions/workflows/build.yml?query=branch%3Amain" alt="GitHub Actions">
-    <img src="https://img.shields.io/github/actions/workflow/status/google-deepmind/mujoco_mpc/build.yml?branch=main">
-  </a>
-  <a href="https://github.com/google-deepmind/mujoco_mpc/blob/main/LICENSE" alt="License">
-    <img src="https://img.shields.io/github/license/google-deepmind/mujoco_mpc">
-  </a>
-</p>
-
-**MuJoCo MPC (MJPC)** is an interactive application and software framework for
-real-time predictive control with [MuJoCo](https://mujoco.org/), developed by
-Google DeepMind.
-
-MJPC allows the user to easily author and solve complex robotics tasks, and
-currently supports multiple shooting-based planners. Derivative-based methods include iLQG and
-Gradient Descent, while derivative-free methods include a simple yet very competitive planner
-called Predictive Sampling.
-
-- [Overview](#overview)
-- [Graphical User Interface](#graphical-user-interface)
-- [Installation](#installation)
-  - [macOS](#macos)
-  - [Ubuntu](#ubuntu)
-  - [Build Issues](#build-issues)
-- [Predictive Control](#predictive-control)
-- [Contributing](#contributing)
-- [Known Issues](#known-issues)
-- [Citation](#citation)
-- [Acknowledgments](#acknowledgments)
-- [License and Disclaimer](#license-and-disclaimer)
+**This repository is built upon the [mujoco_mpc](https://github.com/google-deepmind/mujoco_mpc) codebase. We thank the authors for open-sourcing their work.**
 
 ## Overview
 
-To read the paper describing this software package, please see our
-[preprint](https://arxiv.org/abs/2212.00541).
+This repository extends the original `mujoco_mpc` implementation with a WASP-based model-derivative engine for gradient-based MPC.
 
-For a quick video overview of MJPC, click below.
+The core contribution is `ModelDerivativesWASP` (`mjpc/planners/model_derivatives_wasp.h` and `mjpc/planners/model_derivatives_wasp.cc`), which replaces finite-difference (FD) model derivative evaluation with WASP-based differentiation. The implementation is designed to preserve the practical behavior and interfaces of the original FD pipeline while significantly improving derivative evaluation efficiency in MPC loops.
 
-[![Video](http://img.youtube.com/vi/Bdx7DuAMB6o/hqdefault.jpg)](https://dpmd.ai/mjpc)
+## Key Integration Idea
 
-For a longer talk at the MIT Robotics Seminar in December 2022 describing our results, click
-below.
+In upstream `mujoco_mpc`, gradient-based planners consume a `ModelDerivatives` interface, and FD derivatives are computed through MuJoCo simulator-level routines.
 
-[![2022Talk](http://img.youtube.com/vi/2xVN-qY78P4/hqdefault.jpg)](https://www.youtube.com/watch?v=2xVN-qY78P4)
+This project keeps that architecture and introduces a drop-in WASP implementation:
 
-A more recent, December 2023 talk at the IEEE Technical Committee on Model-Based Optimization
-is available here:
+- `ModelDerivativesWASP` inherits from `ModelDerivatives`.
+- Existing planner logic continues to consume a `ModelDerivatives*` pointer.
+- The derivative backend can be switched between FD and WASP without changing planner algorithms.
 
-[![2023Talk](https://img.youtube.com/vi/J-JO-lgaKtw/hqdefault.jpg)](https://www.youtube.com/watch?v=J-JO-lgaKtw&t=0s)
+This allows WASP acceleration to be integrated in an elegant and low-intrusion way, while maintaining compatibility with existing planner infrastructure.
 
-### Example tasks
+## Core Class: `ModelDerivativesWASP`
 
-Quadruped task:
+`ModelDerivativesWASP` is the central class of this repository. It provides:
 
-[![Quadruped](http://img.youtube.com/vi/esLuwaWz4oE/hqdefault.jpg)](https://www.youtube.com/watch?v=esLuwaWz4oE)
+- FD-compatible lifecycle behavior (`Allocate`, `Reset`, `Compute`) so existing planner usage patterns remain valid.
+- Flexible reset semantics for iterative MPC use.
+- Dedicated management of additional WASP cache/basis memory required for fast repeated derivative calls.
+- Parallel derivative computation across horizon time steps via the existing thread-pool execution model.
+- Optional cache rollout/reuse behavior to reduce repeated work between MPC iterations.
 
+## Respecting Simulator-Level Isolation
 
-Bimanual manipulation:
+As in `mujoco_mpc` (where FD derivative internals are isolated in MuJoCo), this repository keeps WASP low-level differentiation internals outside planner code.
 
-[![Bimanual](http://img.youtube.com/vi/aCNCKVThKIE/hqdefault.jpg)](https://www.youtube.com/watch?v=aCNCKVThKIE)
+All MuJoCo-level WASP primitives (e.g., functions starting with `mj` such as `mj_zeroWASPCache`, `mjd_transitionWASP`, and related routines) are implemented in a separate repository:
 
+- `wasp_differentiated_mujoco`
 
-Rubik's cube 10-move unscramble:
+This preserves clean software boundaries:
 
-[![Unscramble](http://img.youtube.com/vi/ZRRvVWV-Muk/hqdefault.jpg)](https://www.youtube.com/watch?v=ZRRvVWV-Muk)
+- Planner/reasoning layer in this repo.
+- Low-level WASP-enabled simulator differentiation layer in the MuJoCo fork/repo.
 
-Humanoid motion-capture tracking:
+## Planner Integration (GD and iLQG)
 
-[![Tracking](http://img.youtube.com/vi/tEBVK-MO1Sw/hqdefault.jpg)](https://www.youtube.com/watch?v=tEBVK-MO1Sw)
+After implementing `ModelDerivativesWASP`, the backend is integrated into both major gradient-based planners:
 
-## Graphical User Interface
+- Gradient Descent (GD): `mjpc/planners/gradient/planner.cc`
+- iLQG: `mjpc/planners/ilqg/planner.cc`
 
-For a detailed dive of the graphical user interface, see the
-[MJPC GUI](docs/GUI.md) documentation.
+Both planners allocate and maintain:
 
-## Installation
-MJPC is tested with [Ubuntu 20.04](https://releases.ubuntu.com/focal/) and [macOS-12](https://www.apple.com/by/macos/monterey/). In principle, other versions and Windows operating system should work with MJPC, but these are not tested.
+- an FD derivative engine (`fd_md`)
+- a WASP derivative engine (`wasp_md`)
+- a shared pointer (`model_derivative`) used by optimization code
 
-### Prerequisites
-Operating system specific dependencies:
+At runtime, users can switch derivative engines through GUI controls (`MD Engine: FD/WASP`) without modifying task code. WASP tuning parameters are also exposed in GUI (e.g., WASP fractions/tolerances), enabling practical and transparent comparison between FD and WASP during experiments.
 
-#### macOS
-Install [Xcode](https://developer.apple.com/xcode/).
+## Why This Engineering Is Non-Trivial
 
-Install `ninja` and `zlib`:
-```sh
-brew install ninja zlib
-```
+The integration challenge is not only replacing one derivative routine with another. It requires:
 
-#### Ubuntu 20.04
-```sh
-sudo apt-get update && sudo apt-get install cmake libgl1-mesa-dev libxinerama-dev libxcursor-dev libxrandr-dev libxi-dev ninja-build zlib1g-dev clang-12
-```
+- preserving planner-level interface contracts and numerical behavior expectations
+- introducing new cache/basis memory lifecycles without destabilizing resets and rollouts
+- keeping parallel execution safe and efficient across horizon steps
+- maintaining clean separation from simulator internals
 
-### Clone MuJoCo MPC
-```sh
-git clone https://github.com/google-deepmind/mujoco_mpc
-```
-
-### Build and Run MJPC GUI application
-1. Change directory:
-```sh
-cd mujoco_mpc
-```
-
-2. Create and change to build directory:
-```sh
-mkdir build
-cd build
-```
-
-3. Configure:
-
-#### macOS-12
-```sh
-cmake .. -DCMAKE_BUILD_TYPE:STRING=Release -G Ninja -DMJPC_BUILD_GRPC_SERVICE:BOOL=ON
-```
-
-#### Ubuntu 20.04
-```sh
-cmake .. -DCMAKE_BUILD_TYPE:STRING=Release -G Ninja -DCMAKE_C_COMPILER:STRING=clang-12 -DCMAKE_CXX_COMPILER:STRING=clang++-12 -DMJPC_BUILD_GRPC_SERVICE:BOOL=ON
-```
-**Note: gRPC is a large dependency and can take 10-20 minutes to initially download.**
-
-4. Build
-```sh
-cmake --build . --config=Release
-```
-
-6. Run GUI application
-```sh
-cd bin
-./mjpc
-```
-
-### Build and Run MJPC GUI application using VSCode
-We recommend using [VSCode](https://code.visualstudio.com/) and 2 of its
-extensions ([CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools)
-and [C/C++](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools))
-to simplify the build process.
-
-1. Open the cloned directory `mujoco_mpc`.
-2. Configure the project with CMake (a pop-up should appear in VSCode)
-3. Set compiler to `clang-12`.
-4. Build and run the `mjpc` target in "release" mode (VSCode defaults to
-   "debug"). This will open and run the graphical user interface.
-
-### Build Issues
-If you encounter build issues, please see the
-[Github Actions configuration](https://github.com/google-deepmind/mujoco_mpc/blob/main/.github/workflows/build.yml).
-This provides the exact setup we use for building MJPC for testing with Ubuntu 20.04 and macOS-12.
-
-# Python API
-We provide a simple Python API for MJPC. This API is still experimental and expects some more experience from its users. For example, the correct usage requires that the model (defined in Python) and the MJPC task (i.e., the residual and transition functions defined in C++) are compatible with each other. Currently, the Python API does not provide any particular error handling for verifying this compatibility and may be difficult to debug without more in-depth knowledge about MuJoCo and MJPC.
-
-## Installation
-
-### Prerequisites
-1. Build MJPC (see instructions above).
-
-2. Python 3.10
-
-3. (Optionally) Create a conda environment with **Python 3.10**:
-```sh
-conda create -n mjpc python=3.10
-conda activate mjpc
-```
-
-4. Install MuJoCo
-```sh
-pip install mujoco
-```
-
-### Install API
-Next, change to the python directory:
-```sh
-cd python
-```
-
-Install the Python module:
-```sh
-python setup.py install
-```
-
-Test that installation was successful:
-```sh
-python "mujoco_mpc/agent_test.py"
-```
-
-Example scripts are found in `python/mujoco_mpc/demos`. For example from `python/`:
-```sh
-python mujoco_mpc/demos/agent/cartpole_gui.py
-```
-will run the MJPC GUI application using MuJoCo's passive viewer via Python.
-
-### Python API Installation Issues
-If your installation fails or is terminated prematurely, we recommend deleting the MJPC build directory and starting from scratch as the build will likely be corrupted. Additionally, delete the files generated during the installation process from the `python/` directory.
-
-## Predictive Control
-
-See the [Predictive Control](docs/OVERVIEW.md) documentation for more
-information.
-
-## Contributing
-
-See the [Contributing](docs/CONTRIBUTING.md) documentation for more information.
-
-## Known Issues
-
-MJPC is not production-quality software, it is a **research prototype**. There
-are likely to be missing features and outright bugs. If you find any, please
-report them in the [issue tracker](https://github.com/google-deepmind/mujoco_mpc/issues).
-Below we list some known issues, including items that we are actively working
-on.
-
-- We have not tested MJPC on Windows, but there should be no issues in
-  principle.
-- Task specification, in particular the setting of norms and their parameters in
-  XML, is a bit clunky. We are still iterating on the design.
-- The Gradient Descent search step is proportional to the scale of the cost
-  function and requires per-task tuning in order to work well. This is not a bug
-  but a property of vanilla gradient descent. It might be possible to ameliorate
-  this with some sort of gradient normalisation, but we have not investigated
-  this thoroughly.
-
-## Citation
-
-If you use MJPC in your work, please cite our accompanying [preprint](https://arxiv.org/abs/2212.00541):
-
-```bibtex
-@article{howell2022,
-  title={{Predictive Sampling: Real-time Behaviour Synthesis with MuJoCo}},
-  author={Howell, Taylor and Gileadi, Nimrod and Tunyasuvunakool, Saran and Zakka, Kevin and Erez, Tom and Tassa, Yuval},
-  archivePrefix={arXiv},
-  eprint={2212.00541},
-  primaryClass={cs.RO},
-  url={https://arxiv.org/abs/2212.00541},
-  doi={10.48550/arXiv.2212.00541},
-  year={2022},
-  month={dec}
-}
-```
-
-## Acknowledgments
-
-The main effort required to make this repository publicly available was
-undertaken by [Taylor Howell](https://thowell.github.io/) and the Google
-DeepMind Robotics Simulation team.
-
-## License and Disclaimer
-
-All other content is Copyright 2022 DeepMind Technologies Limited and licensed
-under the Apache License, Version 2.0. A copy of this license is provided in the
-top-level LICENSE file in this repository. You can also obtain it from
-https://www.apache.org/licenses/LICENSE-2.0.
-
-This is not an officially supported Google product.
+This repository focuses on that systems-level integration quality: high performance, minimal algorithm-level disruption, and architectural cleanliness.
